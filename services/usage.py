@@ -20,7 +20,7 @@ def get_user_profile(admin_client: Client, user_id: str) -> dict:
         admin_client.table("user_profiles")
         .select("id,email,plan,stripe_customer_id,stripe_subscription_id")
         .eq("id", user_id)
-        .single()
+        .maybe_single()
         .execute()
     )
     return data.data or {}
