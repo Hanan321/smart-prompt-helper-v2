@@ -136,26 +136,3 @@ def increment_prompt_count(admin_client: Client, user_id: str) -> None:
         .eq("id", user_id)
         .execute()
     )
-
-
-def start_paid_plan(
-    admin_client: Client,
-    user_id: str,
-    monthly_prompt_limit: int,
-) -> None:
-    today = date.today()
-    next_end = today + timedelta(days=30)
-
-    (
-        admin_client.table("user_profiles")
-        .update(
-            {
-                "monthly_prompts_used": 0,
-                "monthly_prompt_limit": monthly_prompt_limit,
-                "billing_period_start": str(today),
-                "billing_period_end": str(next_end),
-            }
-        )
-        .eq("id", user_id)
-        .execute()
-    )
