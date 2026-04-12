@@ -63,6 +63,14 @@ def render_styles() -> None:
             margin-bottom: 0.8rem;
         }
 
+        .soft-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 18px;
+            padding: 1.15rem;
+            margin-bottom: 1rem;
+        }
+
         .plan-chip {
             display: inline-block;
             padding: 0.35rem 0.7rem;
@@ -96,22 +104,8 @@ def render_styles() -> None:
             margin-bottom: 0.8rem;
         }
 
-        .price-text {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-top: 0.25rem;
-            margin-bottom: 0.15rem;
-        }
-
-        .price-subtext {
-            color: #9aa0a6;
-            font-size: 0.9rem;
-            margin-bottom: 0.8rem;
-        }
-
         div[data-testid="stButton"] > button,
-        div[data-testid="stDownloadButton"] > button,
-        div[data-testid="stLinkButton"] > a {
+        div[data-testid="stDownloadButton"] > button {
             border-radius: 12px;
             font-weight: 600;
             min-height: 44px;
@@ -121,14 +115,6 @@ def render_styles() -> None:
             visibility: hidden;
         }
 
-        div[data-testid="stDecoration"] {
-            display: none !important;
-        }
-
-        header[data-testid="stHeader"] {
-            background: transparent !important;
-        }
-
         @media (max-width: 640px) {
             .main-title {
                 font-size: 1.95rem;
@@ -136,6 +122,13 @@ def render_styles() -> None:
 
             .subtitle {
                 font-size: 0.96rem;
+            }
+
+            .soft-card {
+                padding: 0.9rem;
+            }
+            div[data-testid="stDecoration"] {
+                display: none;
             }
         }
         </style>
@@ -194,20 +187,18 @@ def subscription_panel(profile: dict, user: dict) -> None:
     )
 
     plans = [
-        ("Free", "$0", "5 prompts/day", None),
-        ("Pro", "$9/month", "Higher usage + faster support", settings.stripe_price_pro),
-        ("Premium", "$19/month", "Unlimited-style workflow", settings.stripe_price_premium),
+        ("Free", "5 prompts/day", None),
+        ("Pro", "Higher usage + faster support", settings.stripe_price_pro),
+        ("Premium", "Unlimited-style workflow", settings.stripe_price_premium),
     ]
 
     cols = st.columns(3)
 
-    for idx, (plan_name, price_label, desc, price_id) in enumerate(plans):
+    for idx, (plan_name, desc, price_id) in enumerate(plans):
         with cols[idx]:
             with st.container(border=True):
                 st.markdown(f"**{plan_name}**")
-                st.markdown(f"<div class='price-text'>{price_label}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='price-subtext'>{desc}</div>", unsafe_allow_html=True)
-
+                st.caption(desc)
                 plan_key = plan_name.lower()
 
                 if plan_key == "free":
@@ -259,21 +250,22 @@ def app_panel(user: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    with st.container(border=True):
-        st.write(f"Signed in as **{user.get('email', 'unknown')}**")
-        st.markdown(
-            f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
-            unsafe_allow_html=True,
-        )
-        if current_plan == "free":
-            st.write(f"Daily usage: **{usage_today}/{settings.free_daily_prompt_limit} prompts**")
+    st.markdown("<div class='soft-card'>", unsafe_allow_html=True)
+    st.write(f"Signed in as **{user.get('email', 'unknown')}**")
+    st.markdown(
+        f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
+        unsafe_allow_html=True,
+    )
+    if current_plan == "free":
+        st.write(f"Daily usage: **{usage_today}/{settings.free_daily_prompt_limit} prompts**")
 
-        if st.button("Log out"):
-            sign_out(supabase_auth)
-            st.session_state.session = None
-            st.session_state.user = None
-            st.session_state.generated_prompt = ""
-            st.rerun()
+    if st.button("Log out"):
+        sign_out(supabase_auth)
+        st.session_state.session = None
+        st.session_state.user = None
+        st.session_state.generated_prompt = ""
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
     with st.expander("ℹ️ How to use"):
         st.markdown(
