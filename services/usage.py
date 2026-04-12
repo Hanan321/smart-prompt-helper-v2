@@ -4,18 +4,33 @@ from supabase import Client
 
 
 def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
-    admin_client.table("user_profiles").upsert(
-        {
-            "id": user_id,
-            "email": email,
-            "total_prompts_used": 0,
-            "monthly_prompts_used": 0,
-            "monthly_prompt_limit": 0,
-            "billing_period_start": None,
-            "billing_period_end": None,
-        },
-        on_conflict="id",
-    ).execute()
+    existing = (
+        admin_client.table("user_profiles")
+        .select("id")
+        .eq("id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if getattr(existing, "data", None):
+        return
+
+    (
+        admin_client.table("user_profiles")
+        .insert(
+            {
+                "id": user_id,
+                "email": email,
+                "plan": "free",
+                "total_prompts_used": 0,
+                "monthly_prompts_used": 0,
+                "monthly_prompt_limit": 0,
+                "billing_period_start": None,
+                "billing_period_end": None,
+            }
+        )
+        .execute()
+    )
 
 
 def get_user_profile(admin_client: Client, user_id: str) -> dict:
