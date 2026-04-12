@@ -193,7 +193,7 @@ def subscription_panel(profile: dict, user: dict) -> None:
 
     for idx, (plan_name, desc, price_id) in enumerate(plans):
         with cols[idx]:
-            with st.container(border=True):
+            with st.container():
                 st.markdown(f"**{plan_name}**")
                 st.caption(desc)
                 plan_key = plan_name.lower()
