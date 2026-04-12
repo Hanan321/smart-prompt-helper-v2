@@ -127,6 +127,9 @@ def render_styles() -> None:
             .soft-card {
                 padding: 0.9rem;
             }
+            div[data-testid="stDecoration"] {
+                display: none;
+            }
         }
         </style>
         """,
