@@ -244,3 +244,14 @@ if not st.session_state.user:
     auth_panel()
 else:
     app_panel(st.session_state.user)
+def app_panel(user: dict) -> None:
+    ensure_user_profile(supabase_admin, user["id"], user.get("email", ""))
+    profile = get_user_profile(supabase_admin, user["id"])
+
+    try:
+        usage_today = get_daily_prompt_count(supabase_admin, user["id"])
+    except Exception as exc:
+        st.error(f"Usage lookup failed: {exc}")
+        st.stop()
+
+    current_plan = (profile.get("plan") or "free").lower()
