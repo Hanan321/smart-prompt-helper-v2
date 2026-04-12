@@ -115,6 +115,14 @@ def render_styles() -> None:
             visibility: hidden;
         }
 
+        div[data-testid="stDecoration"] {
+            display: none !important;
+        }
+
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+        }
+
         @media (max-width: 640px) {
             .main-title {
                 font-size: 1.95rem;
@@ -126,9 +134,6 @@ def render_styles() -> None:
 
             .soft-card {
                 padding: 0.9rem;
-            }
-            div[data-testid="stDecoration"] {
-                display: none;
             }
         }
         </style>
