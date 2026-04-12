@@ -17,7 +17,7 @@ class Settings:
     stripe_price_pro: str
     stripe_price_premium: str
     app_base_url: str
-    free_daily_prompt_limit: int = 5
+    free_daily_prompt_limit: int = 3
 
 
 
