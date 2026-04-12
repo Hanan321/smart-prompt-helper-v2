@@ -5,10 +5,13 @@ from services.billing import BillingService, update_plan
 from services.config import get_settings, validate_settings
 from services.prompt_service import PromptGenerator
 from services.usage import (
+    can_generate_prompt,
     ensure_user_profile,
-    get_daily_prompt_count,
+    get_monthly_prompt_count,
+    get_monthly_prompt_limit,
+    get_total_prompt_count,
     get_user_profile,
-    increment_daily_prompt_count,
+    increment_prompt_count,
 )
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
@@ -147,7 +150,7 @@ def render_styles() -> None:
 def auth_panel() -> None:
     st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='subtitle'>Turn your ideas into high-quality AI prompts instantly.</div>",
+        "<div class='subtitle'>AI prompt support for academic writing, research, and higher education.</div>",
         unsafe_allow_html=True,
     )
 
@@ -194,12 +197,11 @@ def subscription_panel(profile: dict, user: dict) -> None:
     )
 
     plans = [
-        ("Free", "$0", "5 prompts/day", None),
-        ("Pro", "$9/month", "Higher usage + faster support", settings.stripe_price_pro),
-        ("Premium", "$19/month", "Unlimited-style workflow", settings.stripe_price_premium),
+        ("Free Trial", "$0", "5 prompts total to test the app", None),
+        ("Pro", "$20/month", "Up to 200 prompts per month for academic and research workflows", settings.stripe_price_pro),
     ]
 
-    cols = st.columns(3)
+    cols = st.columns(2)
 
     for idx, (plan_name, price_label, desc, price_id) in enumerate(plans):
         with cols[idx]:
@@ -208,25 +210,23 @@ def subscription_panel(profile: dict, user: dict) -> None:
                 st.markdown(f"<div class='price-text'>{price_label}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div class='price-subtext'>{desc}</div>", unsafe_allow_html=True)
 
-                plan_key = plan_name.lower()
-
-                if plan_key == "free":
+                if plan_name == "Free Trial":
                     if st.button("Switch to Free", key="switch_free", use_container_width=True):
                         update_plan(supabase_admin, user["id"], "free")
                         st.success("Plan updated to Free.")
                         st.rerun()
                 else:
-                    if st.button(f"Upgrade to {plan_name}", key=f"upgrade_{plan_key}", use_container_width=True):
+                    if st.button("Upgrade to Pro", key="upgrade_pro", use_container_width=True):
                         try:
                             session = billing_service.create_checkout_session(
                                 customer_email=user["email"],
-                                plan=plan_key,
+                                plan="pro",
                                 success_url=f"{settings.app_base_url}?checkout=success",
                                 cancel_url=f"{settings.app_base_url}?checkout=cancel",
                                 price_id=price_id,
                                 user_id=user["id"],
                             )
-                            st.link_button(f"Continue to {plan_name}", session.url, use_container_width=True)
+                            st.link_button("Continue to Pro checkout", session.url, use_container_width=True)
                         except Exception as exc:
                             st.error(f"Could not create checkout session: {exc}")
 
@@ -244,18 +244,15 @@ def subscription_panel(profile: dict, user: dict) -> None:
 def app_panel(user: dict) -> None:
     ensure_user_profile(supabase_admin, user["id"], user.get("email", ""))
     profile = get_user_profile(supabase_admin, user["id"])
-
-    try:
-        usage_today = get_daily_prompt_count(supabase_admin, user["id"])
-    except Exception as exc:
-        st.error(f"Usage lookup failed: {exc}")
-        st.stop()
-
     current_plan = (profile.get("plan") or "free").lower()
+
+    total_used = get_total_prompt_count(supabase_admin, user["id"])
+    monthly_used = get_monthly_prompt_count(supabase_admin, user["id"])
+    monthly_limit = get_monthly_prompt_limit(supabase_admin, user["id"])
 
     st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='subtitle'>Turn your ideas into high-quality AI prompts instantly.</div>",
+        "<div class='subtitle'>AI prompt support for academic writing, research, and higher education.</div>",
         unsafe_allow_html=True,
     )
 
@@ -265,8 +262,14 @@ def app_panel(user: dict) -> None:
             f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
             unsafe_allow_html=True,
         )
+
         if current_plan == "free":
-            st.write(f"Daily usage: **{usage_today}/{settings.free_daily_prompt_limit} prompts**")
+            st.write(f"Free trial usage: **{total_used}/5 prompts**")
+        else:
+            if monthly_limit > 0:
+                st.write(f"Monthly usage: **{monthly_used}/{monthly_limit} prompts**")
+            else:
+                st.write(f"Monthly usage: **{monthly_used} prompts used**")
 
         if st.button("Log out"):
             sign_out(supabase_auth)
@@ -278,57 +281,56 @@ def app_panel(user: dict) -> None:
     with st.expander("ℹ️ How to use"):
         st.markdown(
             """
-**1.** Choose whether this is for a **Student** or **Researcher**  
+**1.** Choose your academic use case  
 **2.** Select the task you need  
-**3.** Paste your topic, notes, paragraph, or abstract  
+**3.** Paste your draft, notes, abstract, or research text  
 **4.** Click **Generate Prompt**  
-**5.** Copy the result into ChatGPT or another AI tool
+**5.** Use the result in ChatGPT or another AI tool
 """
         )
 
     st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
 
-    student_tasks = ["Explain a topic", "Summarize notes", "Make quiz questions", "Improve writing"]
-    research_tasks = ["Summarize a paper", "Improve academic writing", "Generate research questions"]
+    user_groups = ["Undergraduate", "Graduate", "Researcher / Professional"]
+    academic_tasks = [
+        "Summarize a research paper",
+        "Improve academic writing",
+        "Generate research questions",
+        "Refine a literature review",
+        "Turn notes into a structured academic outline",
+        "Rewrite for clarity, formality, and precision",
+    ]
 
-    mode = st.selectbox("Who is this for?", ["Student", "Researcher"])
+    audience = st.selectbox("Who is this for?", user_groups)
+    task_name = st.selectbox("What do you need help with?", academic_tasks)
 
-    if mode == "Student":
-        task_name = st.selectbox("What do you need help with?", student_tasks)
-        level = st.selectbox("Student level", ["Middle School", "High School", "College"])
-        user_text = st.text_area(
-            "📄 Your content",
-            height=180,
-            placeholder="Example: Explain photosynthesis for a high school student",
-        )
-    else:
-        task_name = st.selectbox("What do you need help with?", research_tasks)
-        level = None
-        user_text = st.text_area(
-            "📄 Your content",
-            height=180,
-            placeholder="Example: Generate research questions about telemedicine in rural healthcare",
-        )
+    user_text = st.text_area(
+        "📄 Your content",
+        height=180,
+        placeholder="Example: Paste an abstract, literature review paragraph, research notes, or academic draft here",
+    )
 
     st.markdown(
-        "<div class='tip'>Tip: The more specific your input, the better your prompt will be.</div>",
+        "<div class='tip'>Tip: Include your discipline, research goal, or target output to get a stronger result.</div>",
         unsafe_allow_html=True,
     )
 
     if st.button("✨ Generate Prompt", use_container_width=True):
         if not user_text.strip():
             st.error("Please enter some text first.")
-        elif current_plan == "free" and usage_today >= settings.free_daily_prompt_limit:
-            st.warning("You reached the daily free limit. Upgrade to Pro or Premium to continue.")
         else:
-            with st.spinner("Generating your prompt..."):
-                try:
-                    final_prompt = prompt_generator.generate(mode, task_name, user_text, level)
-                    increment_daily_prompt_count(supabase_admin, user["id"])
-                    st.session_state.generated_prompt = final_prompt
-                    st.success("Your prompt is ready.")
-                except Exception as exc:
-                    st.error(f"Something went wrong: {exc}")
+            allowed, message = can_generate_prompt(supabase_admin, user["id"])
+            if not allowed:
+                st.warning(message)
+            else:
+                with st.spinner("Generating your prompt..."):
+                    try:
+                        final_prompt = prompt_generator.generate(audience, task_name, user_text, level=None)
+                        increment_prompt_count(supabase_admin, user["id"])
+                        st.session_state.generated_prompt = final_prompt
+                        st.success("Your prompt is ready.")
+                    except Exception as exc:
+                        st.error(f"Something went wrong: {exc}")
 
     if st.session_state.generated_prompt:
         st.markdown("### 📌 Your Generated Prompt")

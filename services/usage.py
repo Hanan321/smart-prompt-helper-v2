@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, timedelta
+
 from supabase import Client
 
 
@@ -7,6 +8,11 @@ def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
         {
             "id": user_id,
             "email": email,
+            "total_prompts_used": 0,
+            "monthly_prompts_used": 0,
+            "monthly_prompt_limit": 0,
+            "billing_period_start": None,
+            "billing_period_end": None,
         },
         on_conflict="id",
     ).execute()
@@ -15,58 +21,141 @@ def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
 def get_user_profile(admin_client: Client, user_id: str) -> dict:
     response = (
         admin_client.table("user_profiles")
-        .select("id,email,plan,stripe_customer_id,stripe_subscription_id")
+        .select(
+            "id,email,plan,stripe_customer_id,stripe_subscription_id,"
+            "total_prompts_used,monthly_prompts_used,monthly_prompt_limit,"
+            "billing_period_start,billing_period_end"
+        )
         .eq("id", user_id)
         .maybe_single()
         .execute()
     )
-    return (getattr(response, "data", None) or {})
+    return getattr(response, "data", None) or {}
 
 
-def get_daily_prompt_count(admin_client: Client, user_id: str) -> int:
-    today = str(date.today())
-    response = (
-        admin_client.table("daily_usage")
-        .select("prompt_count")
-        .eq("user_id", user_id)
-        .eq("usage_date", today)
-        .maybe_single()
+def get_total_prompt_count(admin_client: Client, user_id: str) -> int:
+    profile = get_user_profile(admin_client, user_id)
+    return int(profile.get("total_prompts_used", 0) or 0)
+
+
+def get_monthly_prompt_count(admin_client: Client, user_id: str) -> int:
+    profile = get_user_profile(admin_client, user_id)
+    return int(profile.get("monthly_prompts_used", 0) or 0)
+
+
+def get_monthly_prompt_limit(admin_client: Client, user_id: str) -> int:
+    profile = get_user_profile(admin_client, user_id)
+    return int(profile.get("monthly_prompt_limit", 0) or 0)
+
+
+def billing_period_expired(profile: dict) -> bool:
+    end_date = profile.get("billing_period_end")
+    if not end_date:
+        return False
+    return str(date.today()) > str(end_date)
+
+
+def reset_monthly_usage_if_needed(admin_client: Client, user_id: str) -> None:
+    profile = get_user_profile(admin_client, user_id)
+    if not profile:
+        return
+
+    plan = (profile.get("plan") or "free").lower()
+    if plan == "free":
+        return
+
+    if not billing_period_expired(profile):
+        return
+
+    today = date.today()
+    next_end = today + timedelta(days=30)
+
+    (
+        admin_client.table("user_profiles")
+        .update(
+            {
+                "monthly_prompts_used": 0,
+                "billing_period_start": str(today),
+                "billing_period_end": str(next_end),
+            }
+        )
+        .eq("id", user_id)
         .execute()
     )
 
-    row = getattr(response, "data", None)
-    if not row:
-        return 0
 
-    return int(row.get("prompt_count", 0))
+def can_generate_prompt(admin_client: Client, user_id: str) -> tuple[bool, str]:
+    profile = get_user_profile(admin_client, user_id)
+    if not profile:
+        return False, "User profile not found."
+
+    plan = (profile.get("plan") or "free").lower()
+
+    if plan == "free":
+        total_used = int(profile.get("total_prompts_used", 0) or 0)
+        if total_used >= 5:
+            return False, "Your free trial is complete. Upgrade to Pro to continue."
+        return True, ""
+
+    reset_monthly_usage_if_needed(admin_client, user_id)
+    profile = get_user_profile(admin_client, user_id)
+
+    monthly_used = int(profile.get("monthly_prompts_used", 0) or 0)
+    monthly_limit = int(profile.get("monthly_prompt_limit", 0) or 0)
+
+    if monthly_limit > 0 and monthly_used >= monthly_limit:
+        return False, "You reached your monthly prompt limit for this plan."
+
+    return True, ""
 
 
-def increment_daily_prompt_count(admin_client: Client, user_id: str) -> None:
-    today = str(date.today())
+def increment_prompt_count(admin_client: Client, user_id: str) -> None:
+    profile = get_user_profile(admin_client, user_id)
+    if not profile:
+        return
 
-    response = (
-        admin_client.table("daily_usage")
-        .select("id,prompt_count")
-        .eq("user_id", user_id)
-        .eq("usage_date", today)
-        .maybe_single()
-        .execute()
-    )
+    plan = (profile.get("plan") or "free").lower()
 
-    existing = getattr(response, "data", None)
-
-    if existing:
-        next_count = int(existing.get("prompt_count", 0)) + 1
+    if plan == "free":
+        current_total = int(profile.get("total_prompts_used", 0) or 0)
         (
-            admin_client.table("daily_usage")
-            .update({"prompt_count": next_count})
-            .eq("id", existing["id"])
+            admin_client.table("user_profiles")
+            .update({"total_prompts_used": current_total + 1})
+            .eq("id", user_id)
             .execute()
         )
         return
 
+    reset_monthly_usage_if_needed(admin_client, user_id)
+    profile = get_user_profile(admin_client, user_id)
+
+    current_monthly = int(profile.get("monthly_prompts_used", 0) or 0)
     (
-        admin_client.table("daily_usage")
-        .insert({"user_id": user_id, "usage_date": today, "prompt_count": 1})
+        admin_client.table("user_profiles")
+        .update({"monthly_prompts_used": current_monthly + 1})
+        .eq("id", user_id)
+        .execute()
+    )
+
+
+def start_paid_plan(
+    admin_client: Client,
+    user_id: str,
+    monthly_prompt_limit: int,
+) -> None:
+    today = date.today()
+    next_end = today + timedelta(days=30)
+
+    (
+        admin_client.table("user_profiles")
+        .update(
+            {
+                "monthly_prompts_used": 0,
+                "monthly_prompt_limit": monthly_prompt_limit,
+                "billing_period_start": str(today),
+                "billing_period_end": str(next_end),
+            }
+        )
+        .eq("id", user_id)
         .execute()
     )

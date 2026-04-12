@@ -15,15 +15,12 @@ class Settings:
     stripe_secret_key: str
     stripe_publishable_key: str
     stripe_price_pro: str
-    stripe_price_premium: str
     app_base_url: str
     free_daily_prompt_limit: int = 3
 
 
-
 def _from_env(key: str, default: str = "") -> str:
     return os.getenv(key, default)
-
 
 
 def get_settings() -> Settings:
@@ -35,11 +32,9 @@ def get_settings() -> Settings:
         stripe_secret_key=_from_env("STRIPE_SECRET_KEY"),
         stripe_publishable_key=_from_env("STRIPE_PUBLISHABLE_KEY"),
         stripe_price_pro=_from_env("STRIPE_PRICE_PRO"),
-        stripe_price_premium=_from_env("STRIPE_PRICE_PREMIUM"),
         app_base_url=_from_env("APP_BASE_URL", "http://localhost:8501"),
-        free_daily_prompt_limit=int(_from_env("FREE_DAILY_PROMPT_LIMIT", "5")),
+        free_daily_prompt_limit=int(_from_env("FREE_DAILY_PROMPT_LIMIT", "3")),
     )
-
 
 
 def validate_settings(settings: Settings) -> list[str]:
@@ -50,7 +45,6 @@ def validate_settings(settings: Settings) -> list[str]:
         "SUPABASE_SERVICE_ROLE_KEY": settings.supabase_service_role_key,
         "STRIPE_SECRET_KEY": settings.stripe_secret_key,
         "STRIPE_PRICE_PRO": settings.stripe_price_pro,
-        "STRIPE_PRICE_PREMIUM": settings.stripe_price_premium,
     }
     missing = [k for k, v in required.items() if not v]
     return missing
