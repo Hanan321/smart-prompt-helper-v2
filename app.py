@@ -291,27 +291,52 @@ def app_panel(user: dict) -> None:
 
     st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
 
-    user_groups = ["Undergraduate", "Graduate", "Researcher / Professional"]
-    academic_tasks = [
-        "Summarize a research paper",
-        "Improve academic writing",
-        "Generate research questions",
-        "Refine a literature review",
-        "Turn notes into a structured academic outline",
-        "Rewrite for clarity, formality, and precision",
-    ]
+    task_map = {
+        "Undergraduate": [
+            "Explain a topic",
+            "Summarize notes",
+            "Make quiz questions",
+            "Improve writing",
+        ],
+        "Graduate": [
+            "Summarize a research paper",
+            "Improve academic writing",
+            "Generate research questions",
+            "Turn notes into a structured academic outline",
+        ],
+        "Researcher / Professional": [
+            "Summarize a research paper",
+            "Improve academic writing",
+            "Generate research questions",
+            "Refine a literature review",
+            "Rewrite for clarity, formality, and precision",
+        ],
+    }
 
-    audience = st.selectbox("Who is this for?", user_groups)
-    task_name = st.selectbox("What do you need help with?", academic_tasks)
+    placeholder_map = {
+        "Undergraduate": "Example: Paste class notes, a difficult concept, or a draft paragraph you want to improve",
+        "Graduate": "Example: Paste an abstract, seminar notes, or a graduate-level academic draft here",
+        "Researcher / Professional": "Example: Paste a literature review paragraph, research notes, or manuscript text here",
+    }
+
+    audience = st.selectbox("Who is this for?", list(task_map.keys()))
+    task_name = st.selectbox("What do you need help with?", task_map[audience])
 
     user_text = st.text_area(
         "📄 Your content",
         height=180,
-        placeholder="Example: Paste an abstract, literature review paragraph, research notes, or academic draft here",
+        placeholder=placeholder_map[audience],
     )
 
+    if audience == "Undergraduate":
+        tip_text = "Tip: Add the course topic or class level so the prompt becomes more useful and easier to follow."
+    elif audience == "Graduate":
+        tip_text = "Tip: Include the subject area, assignment goal, or expected structure for a stronger academic prompt."
+    else:
+        tip_text = "Tip: Include your discipline, research goal, or target output to get a stronger result."
+
     st.markdown(
-        "<div class='tip'>Tip: Include your discipline, research goal, or target output to get a stronger result.</div>",
+        f"<div class='tip'>{tip_text}</div>",
         unsafe_allow_html=True,
     )
 
