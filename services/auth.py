@@ -17,8 +17,18 @@ def _to_dict(value: Any) -> Any:
     return value
 
 
-def sign_up(client: Client, email: str, password: str) -> dict[str, Any]:
-    response = client.auth.sign_up({"email": email, "password": password})
+def sign_up(client: Client, email: str, password: str, username: str) -> dict[str, Any]:
+    response = client.auth.sign_up(
+        {
+            "email": email,
+            "password": password,
+            "options": {
+                "data": {
+                    "username": username,
+                }
+            },
+        }
+    )
     return _to_dict(response)
 
 

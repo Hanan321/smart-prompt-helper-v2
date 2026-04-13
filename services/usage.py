@@ -6,7 +6,12 @@ FREE_TOTAL_PROMPT_LIMIT = 5
 PRO_MONTHLY_PROMPT_LIMIT = 200
 
 
-def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
+def ensure_user_profile(
+    admin_client: Client,
+    user_id: str,
+    email: str,
+    username: str | None = None,
+) -> None:
     existing = (
         admin_client.table("user_profiles")
         .select("id")
@@ -22,6 +27,7 @@ def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
         {
             "id": user_id,
             "email": email,
+            "username": username,
             "plan": "free",
             "total_prompts_used": 0,
             "monthly_prompts_used": 0,
@@ -30,7 +36,7 @@ def ensure_user_profile(admin_client: Client, user_id: str, email: str) -> None:
             "billing_period_end": None,
         }
     ).execute()
-
+#---------------------------------------------------------
 
 def get_user_profile(admin_client: Client, user_id: str) -> dict:
     response = (
