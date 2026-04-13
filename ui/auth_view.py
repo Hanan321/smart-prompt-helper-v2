@@ -20,66 +20,65 @@ def auth_panel(
 
     login_tab, signup_tab = st.tabs(["Log In", "Create Account"])
 
-with login_tab:
-    with st.form("login_form"):
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Log in", use_container_width=True)
+    with login_tab:
+        with st.form("login_form"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Log in", use_container_width=True)
 
-        if submitted:
-            if not email.strip() or not password:
-                st.error("Please enter both email and password.")
-            else:
-                try:
-                    auth_response = sign_in(
-                        supabase_auth,
-                        email=email.strip(),
-                        password=password,
-                    )
-                    st.session_state.session = auth_response.get("session")
-                    st.session_state.user = auth_response.get("user")
-                    save_auth_cookies(cookies, auth_response)
-                    st.success("Logged in successfully.")
-                    st.rerun()
-                except Exception as exc:
-                    error_msg = str(exc).lower()
+            if submitted:
+                if not email.strip() or not password:
+                    st.error("Please enter both email and password.")
+                else:
+                    try:
+                        auth_response = sign_in(
+                            supabase_auth,
+                            email=email.strip(),
+                            password=password,
+                        )
+                        st.session_state.session = auth_response.get("session")
+                        st.session_state.user = auth_response.get("user")
+                        save_auth_cookies(cookies, auth_response)
+                        st.success("Logged in successfully.")
+                        st.rerun()
+                    except Exception as exc:
+                        error_msg = str(exc).lower()
 
-                    if "email_not_confirmed" in error_msg or "email not confirmed" in error_msg:
-                        st.error("Please confirm your email before logging in. Check your inbox.")
-                    else:
-                        st.error("Login failed. Please check your credentials.")
+                        if "email_not_confirmed" in error_msg or "email not confirmed" in error_msg:
+                            st.error("Please confirm your email before logging in. Check your inbox.")
+                        else:
+                            st.error("Login failed. Please check your credentials.")
 
-    st.markdown("---")
-    st.markdown("**Didn't get the confirmation email?**")
+        st.markdown("---")
+        st.markdown("**Didn't get the confirmation email?**")
 
-    with st.form("resend_confirmation_form"):
-        resend_email = st.text_input("Email for confirmation link", key="resend_email")
-        resend_submitted = st.form_submit_button(
-            "Resend confirmation email",
-            use_container_width=True,
-        )
+        with st.form("resend_confirmation_form"):
+            resend_email = st.text_input("Email for confirmation link", key="resend_email")
+            resend_submitted = st.form_submit_button(
+                "Resend confirmation email",
+                use_container_width=True,
+            )
 
-        if resend_submitted:
-            clean_resend_email = resend_email.strip()
+            if resend_submitted:
+                clean_resend_email = resend_email.strip()
 
-            if not clean_resend_email:
-                st.error("Please enter your email address.")
-            else:
-                try:
-                    resend_signup_confirmation(
-                        supabase_auth,
-                        email=clean_resend_email,
-                        email_redirect_to=settings.app_base_url,
-                    )
-                    st.success("Confirmation email sent. Please check your inbox.")
-                except Exception as exc:
-                    error_msg = str(exc).lower()
+                if not clean_resend_email:
+                    st.error("Please enter your email address.")
+                else:
+                    try:
+                        resend_signup_confirmation(
+                            supabase_auth,
+                            email=clean_resend_email,
+                            email_redirect_to=settings.app_base_url,
+                        )
+                        st.success("Confirmation email sent. Please check your inbox.")
+                    except Exception as exc:
+                        error_msg = str(exc).lower()
 
-                    if "over_email_send_rate_limit" in error_msg:
-                        st.error("Too many emails were sent recently. Please wait a bit and try again.")
-                    else:
-                        st.error(f"Could not resend confirmation email: {exc}")
-
+                        if "over_email_send_rate_limit" in error_msg:
+                            st.error("Too many emails were sent recently. Please wait a bit and try again.")
+                        else:
+                            st.error(f"Could not resend confirmation email: {exc}")
 
     with signup_tab:
         with st.form("signup_form"):
