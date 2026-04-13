@@ -4,7 +4,6 @@ from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
     sign_in,
-    sign_out,
     sign_up,
 )
 import streamlit as st
@@ -24,6 +23,7 @@ from services.usage import (
 from ui.styles import render_styles
 from ui.subscription_view import subscription_panel
 from ui.auth_view import auth_panel
+from ui.account_view import account_summary_panel
 #---------------------------------------------------------------------
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
@@ -57,9 +57,6 @@ if "auth_restored" not in st.session_state:
     st.session_state.auth_restored = False
 
 
-
-#-------------------------------------------------------------------
-
 def app_panel(user: dict) -> None:
     if not user or "id" not in user:
         st.error("User session error. Please log in again.")
@@ -79,30 +76,18 @@ def app_panel(user: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    with st.container(border=True):
-        st.write(f"Signed in as **{user.get('email', 'unknown')}**")
-        st.markdown(
-            f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
-            unsafe_allow_html=True,
-        )
-
-        if current_plan == "free":
-            st.write(f"Free trial usage: **{total_used}/5 prompts**")
-        else:
-            if monthly_limit > 0:
-                st.write(f"Monthly usage: **{monthly_used}/{monthly_limit} prompts**")
-            else:
-                st.write(f"Monthly usage: **{monthly_used} prompts used**")
-
-        if st.button("Log out", use_container_width=True):
-            sign_out(supabase_auth)
-            clear_auth_cookies(cookies)
-            st.session_state.session = None
-            st.session_state.user = None
-            st.session_state.generated_prompt = ""
-            st.session_state.auth_restored = True
-            st.rerun()
-
+    
+    account_summary_panel(
+    user,
+    current_plan,
+    total_used,
+    monthly_used,
+    monthly_limit,
+    supabase_auth,
+    cookies,
+    clear_auth_cookies,
+)
+#------------------------------------------------------
     with st.expander("ℹ️ How to use"):
         st.markdown(
             """
