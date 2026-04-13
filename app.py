@@ -1,9 +1,13 @@
+import os
+
 import streamlit as st
+from streamlit_cookies_manager_ext import EncryptedCookieManager
 
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
-    restore_session,
+    extract_tokens,
+    restore_session_from_tokens,
     sign_in,
     sign_out,
     sign_up,
@@ -23,29 +27,24 @@ from services.usage import (
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
 
+settings = get_settings()
+missing_settings = validate_settings(settings)
+if missing_settings:
+    st.error(f"Missing environment variables: {', '.join(missing_settings)}")
+    st.stop()
 
-def init_app() -> tuple:
-    settings = get_settings()
-    missing_settings = validate_settings(settings)
-    if missing_settings:
-        st.error(f"Missing environment variables: {', '.join(missing_settings)}")
-        st.stop()
+cookies = EncryptedCookieManager(
+    prefix="smart-prompt-helper/",
+    password=os.getenv("COOKIES_PASSWORD", "change-this-in-production"),
+)
 
-    supabase_auth = create_supabase_auth_client(
-        settings.supabase_url,
-        settings.supabase_anon_key,
-    )
-    supabase_admin = create_supabase_admin_client(
-        settings.supabase_url,
-        settings.supabase_service_role_key,
-    )
-    prompt_generator = PromptGenerator(settings.openai_api_key)
-    billing_service = BillingService(settings.stripe_secret_key)
+if not cookies.ready():
+    st.stop()
 
-    return settings, supabase_auth, supabase_admin, prompt_generator, billing_service
-
-
-settings, supabase_auth, supabase_admin, prompt_generator, billing_service = init_app()
+supabase_auth = create_supabase_auth_client(settings.supabase_url, settings.supabase_anon_key)
+supabase_admin = create_supabase_admin_client(settings.supabase_url, settings.supabase_service_role_key)
+prompt_generator = PromptGenerator(settings.openai_api_key)
+billing_service = BillingService(settings.stripe_secret_key)
 
 if "session" not in st.session_state:
     st.session_state.session = None
@@ -53,12 +52,45 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "generated_prompt" not in st.session_state:
     st.session_state.generated_prompt = ""
-    
-if st.session_state.user is None:
-    restored = restore_session(supabase_auth)
+if "auth_restored" not in st.session_state:
+    st.session_state.auth_restored = False
+
+
+def restore_auth_once() -> None:
+    if st.session_state.auth_restored:
+        return
+
+    access_token = cookies.get("access_token")
+    refresh_token = cookies.get("refresh_token")
+
+    restored = restore_session_from_tokens(
+        supabase_auth,
+        access_token,
+        refresh_token,
+    )
+
     if restored:
         st.session_state.session = restored.get("session")
         st.session_state.user = restored.get("user")
+
+    st.session_state.auth_restored = True
+
+
+def save_auth_cookies(auth_response: dict) -> None:
+    access_token, refresh_token = extract_tokens(auth_response)
+
+    if access_token and refresh_token:
+        cookies["access_token"] = access_token
+        cookies["refresh_token"] = refresh_token
+        cookies.save()
+
+
+def clear_auth_cookies() -> None:
+    if "access_token" in cookies:
+        del cookies["access_token"]
+    if "refresh_token" in cookies:
+        del cookies["refresh_token"]
+    cookies.save()
 
 
 def render_styles() -> None:
@@ -193,6 +225,7 @@ def auth_panel() -> None:
                     auth_response = sign_in(supabase_auth, email=email, password=password)
                     st.session_state.session = auth_response.get("session")
                     st.session_state.user = auth_response.get("user")
+                    save_auth_cookies(auth_response)
                     st.success("Logged in successfully.")
                     st.rerun()
                 except Exception as exc:
@@ -327,9 +360,11 @@ def app_panel(user: dict) -> None:
 
         if st.button("Log out", use_container_width=True):
             sign_out(supabase_auth)
+            clear_auth_cookies()
             st.session_state.session = None
             st.session_state.user = None
             st.session_state.generated_prompt = ""
+            st.session_state.auth_restored = True
             st.rerun()
 
     with st.expander("ℹ️ How to use"):
@@ -433,6 +468,7 @@ def app_panel(user: dict) -> None:
 
 
 render_styles()
+restore_auth_once()
 
 if not st.session_state.user:
     auth_panel()

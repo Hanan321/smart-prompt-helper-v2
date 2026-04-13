@@ -11,41 +11,57 @@ def create_supabase_admin_client(url: str, service_key: str) -> Client:
     return create_client(url, service_key)
 
 
+def _to_dict(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return value
+
+
 def sign_up(client: Client, email: str, password: str) -> dict[str, Any]:
     response = client.auth.sign_up({"email": email, "password": password})
-    return response.model_dump() if hasattr(response, "model_dump") else dict(response)
+    return _to_dict(response)
 
 
 def sign_in(client: Client, email: str, password: str) -> dict[str, Any]:
     response = client.auth.sign_in_with_password({"email": email, "password": password})
-    return response.model_dump() if hasattr(response, "model_dump") else dict(response)
+    return _to_dict(response)
 
 
 def sign_out(client: Client) -> None:
     client.auth.sign_out()
 
 
-def restore_session(client: Client) -> dict[str, Any] | None:
+def extract_tokens(auth_response: dict[str, Any]) -> tuple[str | None, str | None]:
+    session = auth_response.get("session") or {}
+    access_token = session.get("access_token")
+    refresh_token = session.get("refresh_token")
+    return access_token, refresh_token
+
+
+def restore_session_from_tokens(
+    client: Client,
+    access_token: str | None,
+    refresh_token: str | None,
+) -> dict[str, Any] | None:
+    if not access_token or not refresh_token:
+        return None
+
     try:
-        session = client.auth.get_session()
-        if not session:
-            return None
+        session_response = client.auth.set_session(access_token, refresh_token)
+        session_response = _to_dict(session_response)
 
         user_response = client.auth.get_user()
         user = getattr(user_response, "user", None)
 
         if user is None and hasattr(user_response, "model_dump"):
-            data = user_response.model_dump()
-            user = data.get("user")
+            user = user_response.model_dump().get("user")
 
-        if user is None:
+        user = _to_dict(user)
+
+        session = session_response.get("session", session_response)
+
+        if not user:
             return None
-
-        if hasattr(session, "model_dump"):
-            session = session.model_dump()
-
-        if hasattr(user, "model_dump"):
-            user = user.model_dump()
 
         return {"session": session, "user": user}
     except Exception:
