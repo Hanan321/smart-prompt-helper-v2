@@ -8,19 +8,36 @@ def prompt_form_panel(
     can_generate_prompt,
     increment_prompt_count,
 ) -> None:
-    with st.expander("ℹ️ How to use"):
+
+    # -----------------------------
+    # Header
+    # -----------------------------
+    st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        "<div class='subtitle'>Turn your idea into a high-quality AI prompt in seconds.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # -----------------------------
+    # How to use (collapsed help)
+    # -----------------------------
+    with st.expander("ℹ️ How it works"):
         st.markdown(
             """
 **1.** Choose who this is for  
 **2.** Select the kind of help you need  
-**3.** Paste your text, notes, topic, or even just a few words  
+**3.** Enter your topic, notes, or idea  
 **4.** Click **Generate Prompt**  
-**5.** Copy the result into ChatGPT or another AI tool
+**5.** Copy and use it in ChatGPT or another AI tool  
 """
         )
 
-    st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
+    st.divider()
 
+    # -----------------------------
+    # Task options
+    # -----------------------------
     task_map = {
         "Undergraduate": [
             "Explain a topic",
@@ -56,55 +73,79 @@ def prompt_form_panel(
     }
 
     placeholder_map = {
-        "Undergraduate": "Example: biology summary, fix my paragraph, explain photosynthesis, essay about climate change",
-        "Graduate": "Example: summarize this abstract, improve my discussion section, generate research questions on opioid treatment",
-        "Researcher / Professional": "Example: refine this literature review, rewrite for journal tone, create a presentation outline on my findings",
+        "Undergraduate": "Example: biology summary, explain photosynthesis, improve my paragraph",
+        "Graduate": "Example: summarize this abstract, improve discussion section, research questions on addiction",
+        "Researcher / Professional": "Example: refine literature review, rewrite for journal tone, outline presentation",
     }
 
-    audience = st.selectbox("Who is this for?", list(task_map.keys()))
-    task_name = st.selectbox("What do you need help with?", task_map[audience])
+    # -----------------------------
+    # Audience & Task
+    # -----------------------------
+    col1, col2 = st.columns(2)
 
+    with col1:
+        audience = st.selectbox("Who is this for?", list(task_map.keys()))
+
+    with col2:
+        task_name = st.selectbox("What do you need help with?", task_map[audience])
+
+    # -----------------------------
+    # Custom task (only for "Other")
+    # -----------------------------
     if task_name == "Other / Something else":
         custom_task = st.text_input(
             "Describe what you need",
-            placeholder="Example: Create flashcards, write an essay introduction, analyze data, prepare interview answers...",
+            placeholder="Example: Write an introduction, create flashcards, analyze data...",
         )
-        st.info("You can describe exactly what you need. Even a short request is okay.")
+        st.info("Even a short request works — the app will build a strong prompt for you.")
     else:
         custom_task = task_name
-    
+
+    # -----------------------------
+    # Input guidance
+    # -----------------------------
     if task_name == "Other / Something else":
         st.caption("Optional: add extra details below if you have them.")
     else:
         st.caption("Required: please provide content for this task.")
 
+    # -----------------------------
+    # Main input
+    # -----------------------------
     user_text = st.text_area(
-        "📄 Topic, notes, or request (optional)",
+        "📄 Topic, notes, or text",
         height=180,
         placeholder=placeholder_map[audience],
     )
 
     st.caption(
-        "You can paste a full paragraph, notes, a topic, or even just a few words like 'biology summary' or 'fix grammar'."
+        "You can paste full notes, a paragraph, or just a few words like 'biology summary' or 'fix grammar'."
     )
 
     clean_user_text = user_text.strip()
+
     if clean_user_text and len(clean_user_text) < 8:
-        st.info("Short input is okay. The app will try to turn your idea into a stronger prompt.")
+        st.info("Short input is okay — the app will expand it into a strong prompt.")
 
+    # -----------------------------
+    # Smart tips
+    # -----------------------------
     if audience == "Undergraduate":
-        tip_text = "Tip: Add the course topic or class level if you can, but short input also works."
+        tip_text = "Tip: Adding the course topic can improve results, but it's optional."
     elif audience == "Graduate":
-        tip_text = "Tip: Include the subject area, assignment goal, or expected structure for a stronger result."
+        tip_text = "Tip: Include subject area or assignment goal for more precise output."
     else:
-        tip_text = "Tip: Include your discipline, research goal, or target output if available."
+        tip_text = "Tip: Include discipline or research goal for best results."
 
-    st.markdown(
-        f"<div class='tip'>{tip_text}</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div class='tip'>{tip_text}</div>", unsafe_allow_html=True)
 
+    st.divider()
+
+    # -----------------------------
+    # Generate button
+    # -----------------------------
     if st.button("✨ Generate Prompt", use_container_width=True):
+
         final_task = custom_task.strip() if isinstance(custom_task, str) else ""
 
         if task_name == "Other / Something else":
@@ -122,14 +163,22 @@ def prompt_form_panel(
             final_input = clean_user_text
 
         allowed, message = can_generate_prompt(supabase_admin, user["id"])
+
         if not allowed:
             st.warning(message)
         else:
             with st.spinner("Generating your prompt..."):
                 try:
-                    final_prompt = prompt_generator.generate(audience, final_task, final_input)
+                    final_prompt = prompt_generator.generate(
+                        audience,
+                        final_task,
+                        final_input,
+                    )
+
                     increment_prompt_count(supabase_admin, user["id"])
                     st.session_state.generated_prompt = final_prompt
+
                     st.success("Your prompt is ready.")
+
                 except Exception as exc:
                     st.error(f"Something went wrong: {exc}")
