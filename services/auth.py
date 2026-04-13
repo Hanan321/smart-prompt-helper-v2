@@ -116,3 +116,20 @@ def reset_password_for_email(
         response = client.auth.reset_password_email(email)
 
     return _to_dict(response)
+
+def reset_password_for_email(
+    client: Client,
+    email: str,
+    redirect_to: str | None = None,
+) -> dict[str, Any]:
+    if redirect_to:
+        response = client.auth.reset_password_email(
+            email,
+            {"redirect_to": redirect_to},
+        )
+    else:
+        response = client.auth.reset_password_email(email)
+
+    return _to_dict(response)
+
+
