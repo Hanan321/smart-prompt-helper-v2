@@ -16,11 +16,19 @@ class Settings:
     stripe_publishable_key: str
     stripe_price_pro: str
     app_base_url: str
-    free_daily_prompt_limit: int = 3
+    free_total_prompt_limit: int = 5
+    pro_monthly_prompt_limit: int = 200
 
 
 def _from_env(key: str, default: str = "") -> str:
     return os.getenv(key, default)
+
+
+def _from_env_int(key: str, default: int) -> int:
+    value = os.getenv(key)
+    if value is None or value.strip() == "":
+        return default
+    return int(value)
 
 
 def get_settings() -> Settings:
@@ -33,7 +41,8 @@ def get_settings() -> Settings:
         stripe_publishable_key=_from_env("STRIPE_PUBLISHABLE_KEY"),
         stripe_price_pro=_from_env("STRIPE_PRICE_PRO"),
         app_base_url=_from_env("APP_BASE_URL", "http://localhost:8501"),
-        free_daily_prompt_limit=int(_from_env("FREE_DAILY_PROMPT_LIMIT", "3")),
+        free_total_prompt_limit=_from_env_int("FREE_TOTAL_PROMPT_LIMIT", 5),
+        pro_monthly_prompt_limit=_from_env_int("PRO_MONTHLY_PROMPT_LIMIT", 200),
     )
 
 
@@ -46,5 +55,4 @@ def validate_settings(settings: Settings) -> list[str]:
         "STRIPE_SECRET_KEY": settings.stripe_secret_key,
         "STRIPE_PRICE_PRO": settings.stripe_price_pro,
     }
-    missing = [k for k, v in required.items() if not v]
-    return missing
+    return [key for key, value in required.items() if not value]
