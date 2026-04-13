@@ -431,3 +431,4 @@ if not st.session_state.user:
     auth_panel()
 else:
     app_panel(st.session_state.user)
+    
