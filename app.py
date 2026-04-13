@@ -1,7 +1,13 @@
 import streamlit as st
 
-from services.auth import create_supabase_admin_client, create_supabase_auth_client, sign_in, sign_out, sign_up
-from services.billing import BillingService, update_plan
+from services.auth import (
+    create_supabase_admin_client,
+    create_supabase_auth_client,
+    sign_in,
+    sign_out,
+    sign_up,
+)
+from services.billing import BillingService
 from services.config import get_settings, validate_settings
 from services.prompt_service import PromptGenerator
 from services.usage import (
@@ -16,16 +22,29 @@ from services.usage import (
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
 
-settings = get_settings()
-missing_settings = validate_settings(settings)
-if missing_settings:
-    st.error(f"Missing environment variables: {', '.join(missing_settings)}")
-    st.stop()
 
-supabase_auth = create_supabase_auth_client(settings.supabase_url, settings.supabase_anon_key)
-supabase_admin = create_supabase_admin_client(settings.supabase_url, settings.supabase_service_role_key)
-prompt_generator = PromptGenerator(settings.openai_api_key)
-billing_service = BillingService(settings.stripe_secret_key)
+def init_app() -> tuple:
+    settings = get_settings()
+    missing_settings = validate_settings(settings)
+    if missing_settings:
+        st.error(f"Missing environment variables: {', '.join(missing_settings)}")
+        st.stop()
+
+    supabase_auth = create_supabase_auth_client(
+        settings.supabase_url,
+        settings.supabase_anon_key,
+    )
+    supabase_admin = create_supabase_admin_client(
+        settings.supabase_url,
+        settings.supabase_service_role_key,
+    )
+    prompt_generator = PromptGenerator(settings.openai_api_key)
+    billing_service = BillingService(settings.stripe_secret_key)
+
+    return settings, supabase_auth, supabase_admin, prompt_generator, billing_service
+
+
+settings, supabase_auth, supabase_admin, prompt_generator, billing_service = init_app()
 
 if "session" not in st.session_state:
     st.session_state.session = None
@@ -161,12 +180,13 @@ def auth_panel() -> None:
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Log in", use_container_width=True)
+
             if submitted:
                 try:
                     auth_response = sign_in(supabase_auth, email=email, password=password)
                     st.session_state.session = auth_response.get("session")
                     st.session_state.user = auth_response.get("user")
-                    st.success("Logged in.")
+                    st.success("Logged in successfully.")
                     st.rerun()
                 except Exception as exc:
                     st.error(f"Login failed: {exc}")
@@ -176,12 +196,19 @@ def auth_panel() -> None:
             email = st.text_input("Email", key="signup_email")
             password = st.text_input("Password", type="password", key="signup_password")
             submitted = st.form_submit_button("Create account", use_container_width=True)
+
             if submitted:
                 try:
                     auth_response = sign_up(supabase_auth, email=email, password=password)
                     created_user = auth_response.get("user")
+
                     if created_user:
-                        ensure_user_profile(supabase_admin, created_user["id"], created_user.get("email", email))
+                        ensure_user_profile(
+                            supabase_admin,
+                            created_user["id"],
+                            created_user.get("email", email),
+                        )
+
                     st.success("Account created. Check your email if confirmation is enabled.")
                 except Exception as exc:
                     st.error(f"Sign up failed: {exc}")
@@ -198,7 +225,12 @@ def subscription_panel(profile: dict, user: dict) -> None:
 
     plans = [
         ("Free Trial", "$0", "5 prompts total to test the app", None),
-        ("Pro", "$20/month", "Up to 200 prompts per month for academic and research workflows", settings.stripe_price_pro),
+        (
+            "Pro",
+            "$20/month",
+            "Up to 200 prompts per month for academic and research workflows",
+            settings.stripe_price_pro,
+        ),
     ]
 
     cols = st.columns(2)
@@ -211,37 +243,52 @@ def subscription_panel(profile: dict, user: dict) -> None:
                 st.markdown(f"<div class='price-subtext'>{desc}</div>", unsafe_allow_html=True)
 
                 if plan_name == "Free Trial":
-                    if st.button("Switch to Free", key="switch_free", use_container_width=True):
-                        update_plan(supabase_admin, user["id"], "free")
-                        st.success("Plan updated to Free.")
-                        st.rerun()
+                    st.caption("Free plan includes 5 total prompts to try the app.")
                 else:
-                    if st.button("Upgrade to Pro", key="upgrade_pro", use_container_width=True):
-                        try:
-                            session = billing_service.create_checkout_session(
-                                customer_email=user["email"],
-                                plan="pro",
-                                success_url=f"{settings.app_base_url}?checkout=success",
-                                cancel_url=f"{settings.app_base_url}?checkout=cancel",
-                                price_id=price_id,
-                                user_id=user["id"],
-                            )
-                            st.link_button("Continue to Pro checkout", session.url, use_container_width=True)
-                        except Exception as exc:
-                            st.error(f"Could not create checkout session: {exc}")
+                    if current_plan == "pro":
+                        st.caption("You are currently on the Pro plan.")
+                    else:
+                        if st.button("Upgrade to Pro", key="upgrade_pro", use_container_width=True):
+                            try:
+                                session = billing_service.create_checkout_session(
+                                    customer_email=user["email"],
+                                    plan="pro",
+                                    success_url=f"{settings.app_base_url}?checkout=success",
+                                    cancel_url=f"{settings.app_base_url}?checkout=cancel",
+                                    price_id=price_id,
+                                    user_id=user["id"],
+                                )
+                                st.link_button(
+                                    "Continue to Pro checkout",
+                                    session.url,
+                                    use_container_width=True,
+                                )
+                            except Exception as exc:
+                                st.error(f"Could not create checkout session: {exc}")
 
     customer_id = profile.get("stripe_customer_id")
     if customer_id:
         st.markdown("")
         if st.button("Manage billing portal", use_container_width=True):
             try:
-                portal = billing_service.create_billing_portal_session(customer_id, settings.app_base_url)
-                st.link_button("Open Stripe billing portal", portal.url, use_container_width=True)
+                portal = billing_service.create_billing_portal_session(
+                    customer_id,
+                    settings.app_base_url,
+                )
+                st.link_button(
+                    "Open Stripe billing portal",
+                    portal.url,
+                    use_container_width=True,
+                )
             except Exception as exc:
                 st.error(f"Could not open billing portal: {exc}")
 
 
 def app_panel(user: dict) -> None:
+    if not user or "id" not in user:
+        st.error("User session error. Please log in again.")
+        st.stop()
+
     ensure_user_profile(supabase_admin, user["id"], user.get("email", ""))
     profile = get_user_profile(supabase_admin, user["id"])
     current_plan = (profile.get("plan") or "free").lower()
@@ -271,7 +318,7 @@ def app_panel(user: dict) -> None:
             else:
                 st.write(f"Monthly usage: **{monthly_used} prompts used**")
 
-        if st.button("Log out"):
+        if st.button("Log out", use_container_width=True):
             sign_out(supabase_auth)
             st.session_state.session = None
             st.session_state.user = None
@@ -350,7 +397,7 @@ def app_panel(user: dict) -> None:
             else:
                 with st.spinner("Generating your prompt..."):
                     try:
-                        final_prompt = prompt_generator.generate(audience, task_name, user_text, level=None)
+                        final_prompt = prompt_generator.generate(audience, task_name, user_text)
                         increment_prompt_count(supabase_admin, user["id"])
                         st.session_state.generated_prompt = final_prompt
                         st.success("Your prompt is ready.")
