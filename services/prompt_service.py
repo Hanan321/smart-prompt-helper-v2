@@ -14,10 +14,12 @@ class PromptGenerator:
             "You are an expert prompt engineer. "
             "Write exactly one high-quality prompt that the user can copy and paste into ChatGPT or a similar AI tool. "
             "The prompt must be clear, specific, natural, and designed to produce a useful response. "
-            "Include enough context, a clear goal, and output guidance when helpful. "
-            "Whenever useful, write the prompt so it naturally includes the AI role, the user's goal, "
-            "the provided content, and the desired output format. "
+            "If the user's input is short, vague, incomplete, or only a few words, infer the most likely academic or professional intent conservatively and turn it into a strong usable prompt. "
+            "Do not ask follow-up questions. Instead, make reasonable assumptions based on the selected audience, task, and user content. "
+            "Add helpful structure, context, and output instructions when needed, but do not invent specific facts, sources, or personal details that were not provided. "
+            "Whenever useful, write the prompt so it naturally includes the AI role, the user's goal, the provided content, and the desired output format. "
             "Adapt the prompt quality, complexity, tone, and structure to match the selected audience. "
+            "If the user's request is very broad, turn it into a practical, guided prompt that helps the AI produce a strong first draft. "
             "Return only the final prompt."
         )
 
@@ -48,6 +50,15 @@ class PromptGenerator:
             ),
             "Improve writing": (
                 "Create a prompt that asks the AI to improve the writing for clarity, grammar, flow, and organization while preserving meaning."
+            ),
+            "Write an essay": (
+                "Create a prompt that asks the AI to write or help structure an essay with a clear thesis, organized paragraphs, and an appropriate academic tone."
+            ),
+            "Generate study guide": (
+                "Create a prompt that asks the AI to turn the material into a study guide with headings, key terms, and review points."
+            ),
+            "Create presentation outline": (
+                "Create a prompt that asks the AI to create a clear presentation outline with slide-by-slide structure and key talking points."
             ),
             "Summarize a research paper": (
                 "Create a prompt that asks the AI to summarize the paper in a structured academic format including objective, methodology, findings, limitations, and significance."
@@ -84,7 +95,16 @@ Audience: {audience}
 Task: {task_name}
 
 User content:
-{clean_text}
+{clean_text if clean_text else "[No additional user content provided]"}
+
+Important handling rules:
+- The user may not be familiar with AI tools or prompt writing.
+- The user may provide only one or two words.
+- If the user input is vague, short, or incomplete, infer the most likely goal based on the selected task and audience.
+- Expand the request into a useful, beginner-friendly, copy-paste-ready prompt.
+- Do not ask follow-up questions.
+- Do not invent factual details such as study results, references, or personal background.
+- When needed, include placeholders or flexible wording such as "based on the text below" or "using the topic provided."
 
 Audience-specific guidance:
 {audience_guide}
