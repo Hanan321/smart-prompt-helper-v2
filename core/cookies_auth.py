@@ -36,9 +36,3 @@ def clear_auth_cookies(cookies) -> None:
     cookies["access_token"] = ""
     cookies["refresh_token"] = ""
     cookies.save()
-
-    if "access_token" in cookies:
-        del cookies["access_token"]
-    if "refresh_token" in cookies:
-        del cookies["refresh_token"]
-    cookies.save()
