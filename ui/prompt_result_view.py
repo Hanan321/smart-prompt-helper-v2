@@ -5,10 +5,16 @@ def prompt_result_panel(generated_prompt: str) -> None:
     if not generated_prompt:
         return
 
-    st.markdown("### 📌 Your Generated Prompt")
-    st.markdown("<div class='prompt-box'>", unsafe_allow_html=True)
-    st.code(generated_prompt, language=None)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>📌 Your Generated Prompt</div>", unsafe_allow_html=True)
+
+    st.text_area(
+        "Your prompt",
+        value=generated_prompt,
+        height=220,
+        key="generated_prompt_output",
+    )
+
+    st.info("To copy: click inside the box, then press Ctrl+C on Windows or Cmd+C on Mac.")
 
     st.download_button(
         "Download Prompt",
@@ -16,9 +22,4 @@ def prompt_result_panel(generated_prompt: str) -> None:
         file_name="generated_prompt.txt",
         mime="text/plain",
         use_container_width=True,
-    )
-
-    st.markdown(
-        "<div class='muted'>Copy or download this prompt and use it in ChatGPT or another AI tool.</div>",
-        unsafe_allow_html=True,
     )
