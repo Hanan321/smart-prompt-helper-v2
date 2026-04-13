@@ -17,24 +17,28 @@ def _to_dict(value: Any) -> Any:
     return value
 
 
-def sign_up(client: Client, email: str, password: str, username: str) -> dict[str, Any]:
-    response = client.auth.sign_up(
-        {
-            "email": email,
-            "password": password,
-            "options": {
-                "data": {
-                    "username": username,
-                }
-            },
-        }
-    )
+def sign_up(
+    client: Client,
+    email: str,
+    password: str,
+    username: str,
+    email_redirect_to: str | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "email": email,
+        "password": password,
+        "options": {
+            "data": {
+                "username": username,
+            }
+        },
+    }
+
     if email_redirect_to:
         payload["options"]["email_redirect_to"] = email_redirect_to
-        
+
     response = client.auth.sign_up(payload)
     return _to_dict(response)
-
 
 def sign_in(client: Client, email: str, password: str) -> dict[str, Any]:
     response = client.auth.sign_in_with_password({"email": email, "password": password})
@@ -96,4 +100,19 @@ def resend_signup_confirmation(
         }
 
     response = client.auth.resend(payload)
+    return _to_dict(response)
+
+def reset_password_for_email(
+    client: Client,
+    email: str,
+    redirect_to: str | None = None,
+) -> dict[str, Any]:
+    if redirect_to:
+        response = client.auth.reset_password_email(
+            email,
+            {"redirect_to": redirect_to},
+        )
+    else:
+        response = client.auth.reset_password_email(email)
+
     return _to_dict(response)

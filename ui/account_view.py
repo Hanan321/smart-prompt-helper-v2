@@ -35,7 +35,7 @@ def account_summary_panel(
                 pass
 
             clear_auth_cookies(cookies)
-
+            st.session_state.show_welcome = True
             st.session_state.session = None
             st.session_state.user = None
             st.session_state.generated_prompt = ""

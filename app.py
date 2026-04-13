@@ -1,14 +1,17 @@
 import os
-from core.cookies_auth import restore_auth_once, save_auth_cookies, clear_auth_cookies
+
+import streamlit as st
+from streamlit_cookies_manager_ext import EncryptedCookieManager
+
+from core.cookies_auth import clear_auth_cookies, restore_auth_once, save_auth_cookies
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
+    resend_signup_confirmation,
+    reset_password_for_email,
     sign_in,
     sign_up,
-    resend_signup_confirmation,
 )
-import streamlit as st
-from streamlit_cookies_manager_ext import EncryptedCookieManager
 from services.billing import BillingService
 from services.config import get_settings, validate_settings
 from services.prompt_service import PromptGenerator
@@ -21,21 +24,23 @@ from services.usage import (
     get_user_profile,
     increment_prompt_count,
 )
-from ui.styles import render_styles
-from ui.subscription_view import subscription_panel
-from ui.auth_view import auth_panel
 from ui.account_view import account_summary_panel
+from ui.auth_view import auth_panel
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
-#---------------------------------------------------------------------
+from ui.styles import render_styles
+from ui.subscription_view import subscription_panel
+
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
+
 
 settings = get_settings()
 missing_settings = validate_settings(settings)
 if missing_settings:
     st.error(f"Missing environment variables: {', '.join(missing_settings)}")
     st.stop()
+
 
 cookies = EncryptedCookieManager(
     prefix="smart-prompt-helper/",
@@ -45,19 +50,33 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
-supabase_auth = create_supabase_auth_client(settings.supabase_url, settings.supabase_anon_key)
-supabase_admin = create_supabase_admin_client(settings.supabase_url, settings.supabase_service_role_key)
+
+supabase_auth = create_supabase_auth_client(
+    settings.supabase_url,
+    settings.supabase_anon_key,
+)
+supabase_admin = create_supabase_admin_client(
+    settings.supabase_url,
+    settings.supabase_service_role_key,
+)
 prompt_generator = PromptGenerator(settings.openai_api_key)
 billing_service = BillingService(settings.stripe_secret_key)
 
+
 if "session" not in st.session_state:
     st.session_state.session = None
+
 if "user" not in st.session_state:
     st.session_state.user = None
+
 if "generated_prompt" not in st.session_state:
     st.session_state.generated_prompt = ""
+
 if "auth_restored" not in st.session_state:
     st.session_state.auth_restored = False
+
+if "show_welcome" not in st.session_state:
+    st.session_state.show_welcome = True
 
 
 def app_panel(user: dict) -> None:
@@ -65,7 +84,12 @@ def app_panel(user: dict) -> None:
         st.error("User session error. Please log in again.")
         st.stop()
 
-    ensure_user_profile(supabase_admin, user["id"], user.get("email", ""))
+    ensure_user_profile(
+        supabase_admin,
+        user["id"],
+        user.get("email", ""),
+    )
+
     profile = get_user_profile(supabase_admin, user["id"])
     current_plan = (profile.get("plan") or "free").lower()
     display_name = profile.get("username") or user.get("email", "unknown")
@@ -80,7 +104,10 @@ def app_panel(user: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    
+    if st.session_state.show_welcome:
+        st.success(f"Welcome, {display_name}! Your account is ready.")
+        st.session_state.show_welcome = False
+
     account_summary_panel(
         display_name,
         user,
@@ -94,13 +121,13 @@ def app_panel(user: dict) -> None:
     )
 
     prompt_form_panel(
-    user,
-    supabase_admin,
-    prompt_generator,
-    can_generate_prompt,
-    increment_prompt_count,
-)  
-    
+        user,
+        supabase_admin,
+        prompt_generator,
+        can_generate_prompt,
+        increment_prompt_count,
+    )
+
     prompt_result_panel(st.session_state.generated_prompt)
 
     st.divider()
@@ -120,6 +147,7 @@ if not st.session_state.user:
         sign_in,
         sign_up,
         resend_signup_confirmation,
+        reset_password_for_email,
         settings,
     )
 else:
