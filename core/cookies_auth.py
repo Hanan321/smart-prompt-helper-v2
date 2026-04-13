@@ -33,6 +33,10 @@ def save_auth_cookies(cookies, auth_response: dict) -> None:
 
 
 def clear_auth_cookies(cookies) -> None:
+    cookies["access_token"] = ""
+    cookies["refresh_token"] = ""
+    cookies.save()
+
     if "access_token" in cookies:
         del cookies["access_token"]
     if "refresh_token" in cookies:

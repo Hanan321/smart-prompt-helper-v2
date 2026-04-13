@@ -27,10 +27,16 @@ def account_summary_panel(
                 st.write(f"Monthly usage: **{monthly_used} prompts used**")
 
         if st.button("Log out", use_container_width=True):
-            supabase_auth.auth.sign_out()
+            try:
+                supabase_auth.auth.sign_out()
+            except Exception:
+                pass
+
             clear_auth_cookies(cookies)
+
             st.session_state.session = None
             st.session_state.user = None
             st.session_state.generated_prompt = ""
-            st.session_state.auth_restored = True
+            st.session_state.auth_restored = False
+
             st.rerun()
