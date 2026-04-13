@@ -20,9 +20,13 @@ class Settings:
     pro_monthly_prompt_limit: int = 200
 
 
-def _from_env(key: str, default: str = "") -> str:
-    return os.getenv(key, default)
+import streamlit as st
 
+def _from_env(key: str, default: str = "") -> str:
+    try:
+        return st.secrets[key]
+    except Exception:
+        return os.getenv(key, default)
 
 def _from_env_int(key: str, default: int) -> int:
     value = os.getenv(key)
