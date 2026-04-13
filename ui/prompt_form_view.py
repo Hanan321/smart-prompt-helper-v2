@@ -72,9 +72,14 @@ def prompt_form_panel(
         st.info("You can describe exactly what you need. Even a short request is okay.")
     else:
         custom_task = task_name
+    
+    if task_name == "Other / Something else":
+        st.caption("Optional: add extra details below if you have them.")
+    else:
+        st.caption("Required: please provide content for this task.")
 
     user_text = st.text_area(
-        "📄 What would you like help with?",
+        "📄 Topic, notes, or request (optional)",
         height=180,
         placeholder=placeholder_map[audience],
     )
@@ -102,20 +107,29 @@ def prompt_form_panel(
     if st.button("✨ Generate Prompt", use_container_width=True):
         final_task = custom_task.strip() if isinstance(custom_task, str) else ""
 
-        if task_name == "Other / Something else" and not final_task:
-            st.error("Please describe what you need help with.")
-        elif not clean_user_text:
-            st.error("Please enter some text, a topic, or a few words first.")
+        if task_name == "Other / Something else":
+            if not final_task:
+                st.error("Please describe what you need help with.")
+                return
+
+            final_input = clean_user_text or final_task
+
         else:
-            allowed, message = can_generate_prompt(supabase_admin, user["id"])
-            if not allowed:
-                st.warning(message)
-            else:
-                with st.spinner("Generating your prompt..."):
-                    try:
-                        final_prompt = prompt_generator.generate(audience, final_task, clean_user_text)
-                        increment_prompt_count(supabase_admin, user["id"])
-                        st.session_state.generated_prompt = final_prompt
-                        st.success("Your prompt is ready.")
-                    except Exception as exc:
-                        st.error(f"Something went wrong: {exc}")
+            if not clean_user_text:
+                st.error("Please enter your content for this task.")
+                return
+
+            final_input = clean_user_text
+
+        allowed, message = can_generate_prompt(supabase_admin, user["id"])
+        if not allowed:
+            st.warning(message)
+        else:
+            with st.spinner("Generating your prompt..."):
+                try:
+                    final_prompt = prompt_generator.generate(audience, final_task, final_input)
+                    increment_prompt_count(supabase_admin, user["id"])
+                    st.session_state.generated_prompt = final_prompt
+                    st.success("Your prompt is ready.")
+                except Exception as exc:
+                    st.error(f"Something went wrong: {exc}")
