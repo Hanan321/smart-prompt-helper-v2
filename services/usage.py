@@ -29,6 +29,8 @@ def ensure_user_profile(
             "email": email,
             "username": username,
             "plan": "free",
+            "subscription_status": None,
+            "cancel_at_period_end": False,
             "total_prompts_used": 0,
             "monthly_prompts_used": 0,
             "monthly_prompt_limit": 0,
@@ -36,18 +38,17 @@ def ensure_user_profile(
             "billing_period_end": None,
         }
     ).execute()
-#---------------------------------------------------------
+
 
 def get_user_profile(admin_client: Client, user_id: str) -> dict:
     response = (
         admin_client.table("user_profiles")
-        
         .select(
             "id,email,username,plan,stripe_customer_id,stripe_subscription_id,"
+            "subscription_status,cancel_at_period_end,"
             "total_prompts_used,monthly_prompts_used,monthly_prompt_limit,"
             "billing_period_start,billing_period_end"
         )
-
         .eq("id", user_id)
         .maybe_single()
         .execute()
@@ -154,3 +155,4 @@ def increment_prompt_count(admin_client: Client, user_id: str) -> None:
     admin_client.table("user_profiles").update(
         {"monthly_prompts_used": current_monthly + 1}
     ).eq("id", user_id).execute()
+    

@@ -1,7 +1,11 @@
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 
 from supabase import Client, create_client
 
+
+# ----------------------------
+# Clients
+# ----------------------------
 
 def create_supabase_auth_client(url: str, anon_key: str) -> Client:
     return create_client(url, anon_key)
@@ -11,20 +15,28 @@ def create_supabase_admin_client(url: str, service_key: str) -> Client:
     return create_client(url, service_key)
 
 
+# ----------------------------
+# Helpers
+# ----------------------------
+
 def _to_dict(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump()
     return value
 
 
+# ----------------------------
+# Auth Actions
+# ----------------------------
+
 def sign_up(
     client: Client,
     email: str,
     password: str,
     username: str,
-    email_redirect_to: str | None = None,
-) -> dict[str, Any]:
-    payload = {
+    email_redirect_to: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
         "email": email,
         "password": password,
         "options": {
@@ -40,16 +52,26 @@ def sign_up(
     response = client.auth.sign_up(payload)
     return _to_dict(response)
 
-def sign_in(client: Client, email: str, password: str) -> dict[str, Any]:
-    response = client.auth.sign_in_with_password({"email": email, "password": password})
+
+def sign_in(client: Client, email: str, password: str) -> Dict[str, Any]:
+    response = client.auth.sign_in_with_password(
+        {"email": email, "password": password}
+    )
     return _to_dict(response)
 
 
 def sign_out(client: Client) -> None:
-    client.auth.sign_out()
+    try:
+        client.auth.sign_out()
+    except Exception as e:
+        print("Sign out error:", e)
 
 
-def extract_tokens(auth_response: dict[str, Any]) -> tuple[str | None, str | None]:
+# ----------------------------
+# Token Handling
+# ----------------------------
+
+def extract_tokens(auth_response: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     session = auth_response.get("session") or {}
     access_token = session.get("access_token")
     refresh_token = session.get("refresh_token")
@@ -58,9 +80,9 @@ def extract_tokens(auth_response: dict[str, Any]) -> tuple[str | None, str | Non
 
 def restore_session_from_tokens(
     client: Client,
-    access_token: str | None,
-    refresh_token: str | None,
-) -> dict[str, Any] | None:
+    access_token: Optional[str],
+    refresh_token: Optional[str],
+) -> Optional[Dict[str, Any]]:
     if not access_token or not refresh_token:
         return None
 
@@ -82,14 +104,22 @@ def restore_session_from_tokens(
             return None
 
         return {"session": session, "user": user}
-    except Exception:
+
+    except Exception as e:
+        print("Session restore error:", e)
         return None
+
+
+# ----------------------------
+# Email Actions
+# ----------------------------
+
 def resend_signup_confirmation(
     client: Client,
     email: str,
-    email_redirect_to: str | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
+    email_redirect_to: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
         "type": "signup",
         "email": email,
     }
@@ -106,16 +136,19 @@ def resend_signup_confirmation(
 def reset_password_for_email(
     client: Client,
     email: str,
-    redirect_to: str | None = None,
-) -> dict[str, Any]:
-    if redirect_to:
-        response = client.auth.reset_password_email(
-            email,
-            {"redirect_to": redirect_to},
-        )
-    else:
-        response = client.auth.reset_password_email(email)
+    redirect_to: Optional[str] = None,
+) -> Dict[str, Any]:
+    try:
+        if redirect_to:
+            response = client.auth.reset_password_email(
+                email,
+                {"redirect_to": redirect_to},
+            )
+        else:
+            response = client.auth.reset_password_email(email)
 
-    return _to_dict(response)
+        return _to_dict(response)
 
-
+    except Exception as e:
+        print("Password reset error:", e)
+        raise

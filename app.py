@@ -9,6 +9,7 @@ from services.auth import (
     create_supabase_auth_client,
     resend_signup_confirmation,
     reset_password_for_email,
+    restore_session_from_tokens,
     sign_in,
     sign_up,
 )
@@ -42,9 +43,14 @@ if missing_settings:
     st.stop()
 
 
+cookie_password = os.getenv("COOKIES_PASSWORD", "")
+if not cookie_password:
+    st.error("Missing COOKIES_PASSWORD environment variable.")
+    st.stop()
+
 cookies = EncryptedCookieManager(
     prefix="smart-prompt-helper/",
-    password=os.getenv("COOKIES_PASSWORD", "change-this-in-production"),
+    password=cookie_password,
 )
 
 if not cookies.ready():
@@ -77,6 +83,31 @@ if "auth_restored" not in st.session_state:
 
 if "show_welcome" not in st.session_state:
     st.session_state.show_welcome = True
+
+
+# Handle auth session from email link BEFORE restoring old cookies
+query_params = st.query_params
+url_access_token = query_params.get("access_token")
+url_refresh_token = query_params.get("refresh_token")
+
+if url_access_token and url_refresh_token:
+    clear_auth_cookies(cookies)
+
+    restored = restore_session_from_tokens(
+        supabase_auth,
+        url_access_token,
+        url_refresh_token,
+    )
+
+    if restored:
+        st.session_state.session = restored.get("session")
+        st.session_state.user = restored.get("user")
+        save_auth_cookies(cookies, restored)
+        st.session_state.auth_restored = True
+        st.session_state.show_welcome = True
+
+    st.query_params.clear()
+    st.rerun()
 
 
 def app_panel(user: dict) -> None:
