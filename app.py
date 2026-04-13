@@ -135,9 +135,9 @@ def app_panel(user: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    if st.session_state.show_welcome:
-        st.success(f"Welcome, {display_name}! Your account is ready.")
-        st.session_state.show_welcome = False
+    #if st.session_state.show_welcome:
+        #st.success(f"Welcome, {display_name}! Your account is ready.")
+        #st.session_state.show_welcome = False
 
     account_summary_panel(
         display_name,
