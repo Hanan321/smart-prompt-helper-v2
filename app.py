@@ -25,6 +25,7 @@ from ui.subscription_view import subscription_panel
 from ui.auth_view import auth_panel
 from ui.account_view import account_summary_panel
 from ui.prompt_form_view import prompt_form_panel
+from ui.prompt_result_view import prompt_result_panel
 #---------------------------------------------------------------------
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
@@ -88,7 +89,7 @@ def app_panel(user: dict) -> None:
     cookies,
     clear_auth_cookies,
 )
-#------------------------------------------------------
+
     prompt_form_panel(
     user,
     supabase_admin,
@@ -97,22 +98,7 @@ def app_panel(user: dict) -> None:
     increment_prompt_count,
 )  
     
-    if st.session_state.generated_prompt:
-        st.markdown("### 📌 Your Generated Prompt")
-        st.markdown("<div class='prompt-box'>", unsafe_allow_html=True)
-        st.code(st.session_state.generated_prompt, language=None)
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.download_button(
-            "Download Prompt",
-            data=st.session_state.generated_prompt,
-            file_name="generated_prompt.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
-        st.markdown(
-            "<div class='muted'>Copy or download this prompt and use it in ChatGPT or another AI tool.</div>",
-            unsafe_allow_html=True,
-        )
+    prompt_result_panel(st.session_state.generated_prompt)
 
     st.divider()
     subscription_panel(profile, user, billing_service, settings)
