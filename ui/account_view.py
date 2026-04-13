@@ -2,6 +2,7 @@ import streamlit as st
 
 
 def account_summary_panel(
+    display_name: str,
     user: dict,
     current_plan: str,
     total_used: int,
@@ -12,7 +13,8 @@ def account_summary_panel(
     clear_auth_cookies,
 ) -> None:
     with st.container(border=True):
-        st.write(f"Signed in as **{user.get('email', 'unknown')}**")
+        st.write(f"Signed in as **{display_name}**")
+        st.caption(user.get("email", "unknown"))
         st.markdown(
             f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
             unsafe_allow_html=True,

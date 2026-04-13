@@ -5,6 +5,7 @@ from services.auth import (
     create_supabase_auth_client,
     sign_in,
     sign_up,
+    resend_signup_confirmation,
 )
 import streamlit as st
 from streamlit_cookies_manager_ext import EncryptedCookieManager
@@ -67,6 +68,7 @@ def app_panel(user: dict) -> None:
     ensure_user_profile(supabase_admin, user["id"], user.get("email", ""))
     profile = get_user_profile(supabase_admin, user["id"])
     current_plan = (profile.get("plan") or "free").lower()
+    display_name = profile.get("username") or user.get("email", "unknown")
 
     total_used = get_total_prompt_count(supabase_admin, user["id"])
     monthly_used = get_monthly_prompt_count(supabase_admin, user["id"])
@@ -80,15 +82,16 @@ def app_panel(user: dict) -> None:
 
     
     account_summary_panel(
-    user,
-    current_plan,
-    total_used,
-    monthly_used,
-    monthly_limit,
-    supabase_auth,
-    cookies,
-    clear_auth_cookies,
-)
+        display_name,
+        user,
+        current_plan,
+        total_used,
+        monthly_used,
+        monthly_limit,
+        supabase_auth,
+        cookies,
+        clear_auth_cookies,
+    )
 
     prompt_form_panel(
     user,
@@ -116,6 +119,8 @@ if not st.session_state.user:
         ensure_user_profile,
         sign_in,
         sign_up,
+        resend_signup_confirmation,
+        settings,
     )
 else:
     app_panel(st.session_state.user)

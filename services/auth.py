@@ -76,3 +76,20 @@ def restore_session_from_tokens(
         return {"session": session, "user": user}
     except Exception:
         return None
+def resend_signup_confirmation(
+    client: Client,
+    email: str,
+    email_redirect_to: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "type": "signup",
+        "email": email,
+    }
+
+    if email_redirect_to:
+        payload["options"] = {
+            "email_redirect_to": email_redirect_to,
+        }
+
+    response = client.auth.resend(payload)
+    return _to_dict(response)

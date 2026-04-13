@@ -41,11 +41,13 @@ def ensure_user_profile(
 def get_user_profile(admin_client: Client, user_id: str) -> dict:
     response = (
         admin_client.table("user_profiles")
+        
         .select(
-            "id,email,plan,stripe_customer_id,stripe_subscription_id,"
+            "id,email,username,plan,stripe_customer_id,stripe_subscription_id,"
             "total_prompts_used,monthly_prompts_used,monthly_prompt_limit,"
             "billing_period_start,billing_period_end"
         )
+
         .eq("id", user_id)
         .maybe_single()
         .execute()
