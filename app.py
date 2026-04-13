@@ -3,6 +3,7 @@ import streamlit as st
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
+    restore_session,
     sign_in,
     sign_out,
     sign_up,
@@ -52,6 +53,12 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "generated_prompt" not in st.session_state:
     st.session_state.generated_prompt = ""
+    
+if st.session_state.user is None:
+    restored = restore_session(supabase_auth)
+    if restored:
+        st.session_state.session = restored.get("session")
+        st.session_state.user = restored.get("user")
 
 
 def render_styles() -> None:
@@ -431,4 +438,3 @@ if not st.session_state.user:
     auth_panel()
 else:
     app_panel(st.session_state.user)
-    
