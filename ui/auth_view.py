@@ -118,6 +118,7 @@ def auth_panel(
                             email=clean_email,
                             password=password,
                             username=clean_username,
+                            email_redirect_to=settings.app_base_url
                         )
                         created_user = auth_response.get("user")
 

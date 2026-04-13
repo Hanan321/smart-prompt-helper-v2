@@ -29,6 +29,10 @@ def sign_up(client: Client, email: str, password: str, username: str) -> dict[st
             },
         }
     )
+    if email_redirect_to:
+        payload["options"]["email_redirect_to"] = email_redirect_to
+        
+    response = client.auth.sign_up(payload)
     return _to_dict(response)
 
 
