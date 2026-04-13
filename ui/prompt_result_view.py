@@ -7,14 +7,11 @@ def prompt_result_panel(generated_prompt: str) -> None:
 
     st.markdown("<div class='section-title'>📌 Your Generated Prompt</div>", unsafe_allow_html=True)
 
-    st.text_area(
-        "Your prompt",
-        value=generated_prompt,
-        height=220,
-        key="generated_prompt_output",
-    )
+    st.info("Use the small copy icon in the top-right corner of the prompt box, or download the prompt below.")
 
-    st.info("To copy: click inside the box, then press Ctrl+C on Windows or Cmd+C on Mac.")
+    st.code(generated_prompt, language=None)
+
+    st.caption("If copying on desktop: click inside the prompt, then press Ctrl+A and Ctrl+C on Windows, or Cmd+A and Cmd+C on Mac.")
 
     st.download_button(
         "Download Prompt",
