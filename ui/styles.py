@@ -1,3 +1,5 @@
+import streamlit as st
+
 def render_styles() -> None:
     st.markdown(
         """
