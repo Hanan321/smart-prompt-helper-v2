@@ -1,17 +1,14 @@
 import os
-
-import streamlit as st
-from streamlit_cookies_manager_ext import EncryptedCookieManager
-
+from core.cookies_auth import restore_auth_once, save_auth_cookies, clear_auth_cookies
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
-    extract_tokens,
-    restore_session_from_tokens,
     sign_in,
     sign_out,
     sign_up,
 )
+import streamlit as st
+from streamlit_cookies_manager_ext import EncryptedCookieManager
 from services.billing import BillingService
 from services.config import get_settings, validate_settings
 from services.prompt_service import PromptGenerator
@@ -24,6 +21,8 @@ from services.usage import (
     get_user_profile,
     increment_prompt_count,
 )
+from ui.styles import render_styles
+#---------------------------------------------------------------------
 
 st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
 
@@ -56,155 +55,6 @@ if "auth_restored" not in st.session_state:
     st.session_state.auth_restored = False
 
 
-def restore_auth_once() -> None:
-    if st.session_state.auth_restored:
-        return
-
-    access_token = cookies.get("access_token")
-    refresh_token = cookies.get("refresh_token")
-
-    restored = restore_session_from_tokens(
-        supabase_auth,
-        access_token,
-        refresh_token,
-    )
-
-    if restored:
-        st.session_state.session = restored.get("session")
-        st.session_state.user = restored.get("user")
-
-    st.session_state.auth_restored = True
-
-
-def save_auth_cookies(auth_response: dict) -> None:
-    access_token, refresh_token = extract_tokens(auth_response)
-
-    if access_token and refresh_token:
-        cookies["access_token"] = access_token
-        cookies["refresh_token"] = refresh_token
-        cookies.save()
-
-
-def clear_auth_cookies() -> None:
-    if "access_token" in cookies:
-        del cookies["access_token"]
-    if "refresh_token" in cookies:
-        del cookies["refresh_token"]
-    cookies.save()
-
-
-def render_styles() -> None:
-    st.markdown(
-        """
-        <style>
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 3rem;
-            max-width: 900px;
-        }
-
-        .main-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.25rem;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #8b8f98;
-            font-size: 1.05rem;
-            margin-bottom: 1.8rem;
-        }
-
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-top: 1.2rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .plan-chip {
-            display: inline-block;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            background: rgba(86, 120, 255, 0.16);
-            color: #9db3ff;
-            font-size: 0.85rem;
-            font-weight: 700;
-            margin-top: 0.35rem;
-            margin-bottom: 0.35rem;
-        }
-
-        .muted {
-            color: #9aa0a6;
-            font-size: 0.95rem;
-        }
-
-        .tip {
-            font-size: 0.93rem;
-            color: #8b8f98;
-            margin-top: 0.45rem;
-            margin-bottom: 0.35rem;
-        }
-
-        .prompt-box {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            border-radius: 16px;
-            padding: 0.8rem;
-            margin-top: 0.5rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .price-text {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-top: 0.25rem;
-            margin-bottom: 0.15rem;
-        }
-
-        .price-subtext {
-            color: #9aa0a6;
-            font-size: 0.9rem;
-            margin-bottom: 0.8rem;
-        }
-
-        div[data-testid="stButton"] > button,
-        div[data-testid="stDownloadButton"] > button,
-        div[data-testid="stLinkButton"] > a {
-            border-radius: 12px;
-            font-weight: 600;
-            min-height: 44px;
-        }
-
-        [data-testid="stToolbar"] {
-            visibility: hidden;
-        }
-
-        div[data-testid="stDecoration"] {
-            display: none !important;
-        }
-
-        header[data-testid="stHeader"] {
-            background: transparent !important;
-        }
-
-        @media (max-width: 640px) {
-            .main-title {
-                font-size: 1.95rem;
-            }
-
-            .subtitle {
-                font-size: 0.96rem;
-            }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def auth_panel() -> None:
     st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
     st.markdown(
@@ -225,7 +75,7 @@ def auth_panel() -> None:
                     auth_response = sign_in(supabase_auth, email=email, password=password)
                     st.session_state.session = auth_response.get("session")
                     st.session_state.user = auth_response.get("user")
-                    save_auth_cookies(auth_response)
+                    save_auth_cookies(cookies, auth_response)
                     st.success("Logged in successfully.")
                     st.rerun()
                 except Exception as exc:
@@ -360,7 +210,7 @@ def app_panel(user: dict) -> None:
 
         if st.button("Log out", use_container_width=True):
             sign_out(supabase_auth)
-            clear_auth_cookies()
+            clear_auth_cookies(cookies)
             st.session_state.session = None
             st.session_state.user = None
             st.session_state.generated_prompt = ""
@@ -468,7 +318,7 @@ def app_panel(user: dict) -> None:
 
 
 render_styles()
-restore_auth_once()
+restore_auth_once(cookies, supabase_auth)
 
 if not st.session_state.user:
     auth_panel()
