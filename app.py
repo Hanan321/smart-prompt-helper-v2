@@ -27,7 +27,7 @@ from services.usage import (
 )
 from ui.account_view import account_summary_panel
 from ui.auth_view import auth_panel
-from ui.landing_view import landing_page
+#from ui.landing_view import landing_page
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
@@ -193,8 +193,9 @@ if st.session_state.user:
 # ----------------------------
 # Routing
 # ----------------------------
-if st.session_state.page == "home" and not st.session_state.user:
-    landing_page()
+if st.session_state.page == "home":
+    st.session_state.page = "app"
+    st.rerun()
 
 elif not st.session_state.user:
     auth_panel(
