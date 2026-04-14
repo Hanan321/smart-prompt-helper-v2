@@ -651,7 +651,7 @@
 
       <div class="nav__actions">
         <a class="btn btn--secondary" href="#pricing">View pricing</a>
-        <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Get started</a>
+        <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Get started</a>
       </div>
     </div>
   </header>
@@ -667,7 +667,7 @@
             stronger responses from AI tools like ChatGPT.
           </p>
           <div class="hero__actions">
-            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Generate your first prompt</a>
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Generate your first prompt</a>
             <a class="btn btn--secondary" href="#how">See how it works</a>
           </div>
           <p class="hero__note">
@@ -827,7 +827,7 @@
                 Smart Prompt Helper gives your request a stronger shape before it reaches the AI model, so the first answer is more likely to be clear, complete, and practical.
               </p>
             </div>
-            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Create a prompt</a>
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Create a prompt</a>
           </div>
         </div>
       </div>
@@ -854,7 +854,7 @@
               <li>Full access to the main prompt workflow</li>
               <li>Great for first-time users</li>
             </ul>
-            <a class="btn btn--secondary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Start free</a>
+            <a class="btn btn--secondary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Start free</a>
           </article>
 
           <article class="price-card price-card--featured">
@@ -867,7 +867,7 @@
               <li>Academic and professional workflow support</li>
               <li>A better fit for research-heavy work</li>
             </ul>
-            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Get started</a>
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Get started</a>
           </article>
         </div>
       </div>
@@ -880,7 +880,7 @@
           <p>
             Turn rough ideas into polished, high-quality prompts that are easier to use and more likely to produce strong output.
           </p>
-          <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Create your first prompt</a>
+          <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Create your first prompt</a>
         </div>
       </div>
     </section>
@@ -892,5 +892,19 @@
       <div>Clearer thinking, stronger writing, better AI results.</div>
     </div>
   </footer>
+
+  <script>
+    (() => {
+      const onlineAppUrl = "https://cksrlu3biqpraokzyw4me5.streamlit.app/";
+      const localAppUrl = "http://localhost:8501";
+      const localHosts = new Set(["", "localhost", "127.0.0.1", "0.0.0.0"]);
+      const isLocalPage = window.location.protocol === "file:" || localHosts.has(window.location.hostname);
+      const appUrl = isLocalPage ? localAppUrl : onlineAppUrl;
+
+      document.querySelectorAll("[data-app-link]").forEach((link) => {
+        link.href = appUrl;
+      });
+    })();
+  </script>
 </body>
 </html>
