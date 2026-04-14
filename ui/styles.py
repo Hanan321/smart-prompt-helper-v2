@@ -124,6 +124,26 @@ def render_styles() -> None:
             color: var(--accent) !important;
         }
 
+        .st-key-show_resend_confirmation_button button,
+        div[data-testid="stButton"] > button[aria-label="Click here"] {
+            min-height: auto;
+            padding: 0 !important;
+            border: 0 !important;
+            color: var(--accent-dark) !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-weight: 800 !important;
+            text-decoration: underline !important;
+            text-underline-offset: 0.18em;
+        }
+
+        .st-key-show_resend_confirmation_button button:hover,
+        div[data-testid="stButton"] > button[aria-label="Click here"]:hover {
+            color: var(--accent) !important;
+            background: transparent !important;
+            transform: none;
+        }
+
         .prompt-box {
             margin-top: 0.5rem;
             margin-bottom: 0.8rem;

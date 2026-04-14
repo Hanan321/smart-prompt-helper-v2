@@ -22,7 +22,9 @@ def auth_panel(
     query_params = st.query_params
     error = query_params.get("error")
     error_code = query_params.get("error_code")
-    show_resend_form = query_params.get("show_resend_confirmation") == "1"
+
+    if "show_resend_confirmation_form" not in st.session_state:
+        st.session_state.show_resend_confirmation_form = False
 
     auth_message = None
     show_resend = True
@@ -101,13 +103,18 @@ def auth_panel(
 
         if show_resend:
             st.markdown("---")
-            st.markdown(
-                "**Didn't get the confirmation email?** "
-                "<a class='inline-action-link' href='?show_resend_confirmation=1' target='_self'>Click here</a>",
-                unsafe_allow_html=True,
-            )
+            st.markdown("**Didn't get the confirmation email?**")
 
-            if show_resend_form:
+            if not st.session_state.show_resend_confirmation_form:
+                if st.button(
+                    "Click here",
+                    key="show_resend_confirmation_button",
+                    type="secondary",
+                ):
+                    st.session_state.show_resend_confirmation_form = True
+                    st.rerun()
+
+            if st.session_state.show_resend_confirmation_form:
                 with st.form("resend_confirmation_form"):
                     resend_email = st.text_input(
                         "Email for confirmation link",
