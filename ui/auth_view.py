@@ -1,5 +1,3 @@
-from html import escape
-
 import streamlit as st
 
 
@@ -21,15 +19,10 @@ def auth_panel(
         unsafe_allow_html=True,
     )
 
-    home_url = "https://smartprompthelper.com"
-    st.markdown(
-        f"<a class='home-link-button' href='{escape(home_url, quote=True)}' target='_top' rel='noopener'>← Back to Home</a>",
-        unsafe_allow_html=True,
-    )
-
     query_params = st.query_params
     error = query_params.get("error")
     error_code = query_params.get("error_code")
+    show_resend_form = query_params.get("show_resend_confirmation") == "1"
 
     auth_message = None
     show_resend = True
@@ -108,48 +101,53 @@ def auth_panel(
 
         if show_resend:
             st.markdown("---")
-            st.markdown("**Didn't get the confirmation email?**")
+            st.markdown(
+                "**Didn't get the confirmation email?** "
+                "<a class='inline-action-link' href='?show_resend_confirmation=1' target='_self'>Click here</a>",
+                unsafe_allow_html=True,
+            )
 
-            with st.form("resend_confirmation_form"):
-                resend_email = st.text_input(
-                    "Email for confirmation link",
-                    key="resend_email",
-                )
-                resend_submitted = st.form_submit_button(
-                    "Resend confirmation email",
-                    use_container_width=True,
-                )
+            if show_resend_form:
+                with st.form("resend_confirmation_form"):
+                    resend_email = st.text_input(
+                        "Email for confirmation link",
+                        key="resend_email",
+                    )
+                    resend_submitted = st.form_submit_button(
+                        "Resend confirmation email",
+                        use_container_width=True,
+                    )
 
-                if resend_submitted:
-                    clean_email = resend_email.strip().lower()
+                    if resend_submitted:
+                        clean_email = resend_email.strip().lower()
 
-                    if not clean_email:
-                        st.error("Please enter your email address.")
-                    else:
-                        try:
-                            resend_signup_confirmation(
-                                supabase_auth,
-                                email=clean_email,
-                                email_redirect_to=settings.app_base_url,
-                            )
-                            st.success(
-                                "Confirmation email sent. Please check your inbox."
-                            )
-                        except Exception as exc:
-                            error_msg = str(exc).lower()
-
-                            if "over_email_send_rate_limit" in error_msg:
-                                st.error(
-                                    "Too many emails were sent recently. Please wait a little and try again."
+                        if not clean_email:
+                            st.error("Please enter your email address.")
+                        else:
+                            try:
+                                resend_signup_confirmation(
+                                    supabase_auth,
+                                    email=clean_email,
+                                    email_redirect_to=settings.app_base_url,
                                 )
-                            elif "user not found" in error_msg:
-                                st.error(
-                                    "We could not find an account with that email address."
+                                st.success(
+                                    "Confirmation email sent. Please check your inbox."
                                 )
-                            else:
-                                st.error(
-                                    f"Could not resend confirmation email: {exc}"
-                                )
+                            except Exception as exc:
+                                error_msg = str(exc).lower()
+
+                                if "over_email_send_rate_limit" in error_msg:
+                                    st.error(
+                                        "Too many emails were sent recently. Please wait a little and try again."
+                                    )
+                                elif "user not found" in error_msg:
+                                    st.error(
+                                        "We could not find an account with that email address."
+                                    )
+                                else:
+                                    st.error(
+                                        f"Could not resend confirmation email: {exc}"
+                                    )
 
     with signup_tab:
         with st.form("signup_form"):

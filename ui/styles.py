@@ -112,6 +112,18 @@ def render_styles() -> None:
             line-height: 1.65;
         }
 
+        .inline-action-link {
+            color: var(--accent-dark) !important;
+            font-weight: 800;
+            text-decoration: underline !important;
+            text-underline-offset: 0.18em;
+        }
+
+        .inline-action-link:hover,
+        .inline-action-link:focus-visible {
+            color: var(--accent) !important;
+        }
+
         .prompt-box {
             margin-top: 0.5rem;
             margin-bottom: 0.8rem;
@@ -120,32 +132,6 @@ def render_styles() -> None:
             border-radius: var(--radius);
             color: var(--ink);
             background: var(--surface-soft);
-        }
-
-        .home-link-button {
-            min-height: 46px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.35rem auto;
-            padding: 0 1.1rem;
-            border: 1px solid transparent;
-            border-radius: var(--radius);
-            color: #ffffff !important;
-            background: var(--accent);
-            box-shadow: 0 12px 24px rgba(15, 118, 110, 0.18);
-            font-size: 0.94rem;
-            font-weight: 800;
-            text-decoration: none !important;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-        }
-
-        .home-link-button:hover,
-        .home-link-button:focus-visible {
-            color: #ffffff !important;
-            background: var(--accent-dark);
-            text-decoration: none !important;
-            transform: translateY(-1px);
         }
 
         .price-text {
