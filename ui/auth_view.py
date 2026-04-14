@@ -21,8 +21,9 @@ def auth_panel(
         unsafe_allow_html=True,
     )
 
+    home_url = "https://smartprompthelper.com"
     st.markdown(
-        f"<a class='home-link-button' href='{escape(settings.home_url, quote=True)}' target='_self'>← Back to Home</a>",
+        f"<a class='home-link-button' href='{escape(home_url, quote=True)}' target='_self'>← Back to Home</a>",
         unsafe_allow_html=True,
     )
 
