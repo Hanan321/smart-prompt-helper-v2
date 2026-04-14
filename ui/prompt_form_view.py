@@ -116,7 +116,7 @@ def prompt_form_panel(
 
     st.divider()
 
-    if st.button("✨ Generate Prompt", use_container_width=True):
+    if st.button("✨ Generate Prompt", type="primary", use_container_width=True):
         final_task = custom_task.strip() if isinstance(custom_task, str) else ""
 
         if task_name == "Other / Something else":

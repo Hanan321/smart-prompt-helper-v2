@@ -207,12 +207,21 @@ def render_styles() -> None:
         }
 
         div[data-testid="stButton"] > button[kind="primary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"],
         div[data-testid="stFormSubmitButton"] > button,
         div[data-testid="stDownloadButton"] > button,
         div[data-testid="stLinkButton"] > a {
             color: #ffffff !important;
             background: var(--accent) !important;
             box-shadow: 0 12px 24px rgba(15, 118, 110, 0.18);
+        }
+
+        div[data-testid="stButton"] > button[kind="primary"] *,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] *,
+        div[data-testid="stFormSubmitButton"] > button *,
+        div[data-testid="stDownloadButton"] > button *,
+        div[data-testid="stLinkButton"] > a * {
+            color: #ffffff !important;
         }
 
         div[data-testid="stButton"] > button[kind="secondary"] {
@@ -229,10 +238,20 @@ def render_styles() -> None:
         }
 
         div[data-testid="stButton"] > button[kind="primary"]:hover,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover,
         div[data-testid="stFormSubmitButton"] > button:hover,
         div[data-testid="stDownloadButton"] > button:hover,
         div[data-testid="stLinkButton"] > a:hover {
+            color: #ffffff !important;
             background: var(--accent-dark) !important;
+        }
+
+        div[data-testid="stButton"] > button[kind="primary"]:hover *,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover *,
+        div[data-testid="stFormSubmitButton"] > button:hover *,
+        div[data-testid="stDownloadButton"] > button:hover *,
+        div[data-testid="stLinkButton"] > a:hover * {
+            color: #ffffff !important;
         }
 
         div[data-testid="stTabs"] button {

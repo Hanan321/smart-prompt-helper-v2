@@ -28,7 +28,7 @@ def account_summary_panel(
             else:
                 st.write(f"Monthly usage: **{monthly_used} prompts used**")
 
-        if st.button("Log out", use_container_width=True):
+        if st.button("Log out", type="primary", use_container_width=True):
             try:
                 supabase_auth.auth.sign_out()
             except Exception:

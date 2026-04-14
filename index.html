@@ -140,13 +140,21 @@
     }
 
     .btn--primary {
-      color: #ffffff;
+      color: #ffffff !important;
       background: var(--accent);
       box-shadow: 0 12px 24px rgba(15, 118, 110, 0.22);
     }
 
-    .btn--primary:hover {
+    .btn--primary:hover,
+    .btn--primary:focus-visible {
+      color: #ffffff !important;
       background: var(--accent-dark);
+    }
+
+    .btn--primary *,
+    .btn--primary:hover *,
+    .btn--primary:focus-visible * {
+      color: #ffffff !important;
     }
 
     .btn--secondary {
@@ -854,7 +862,7 @@
               <li>Full access to the main prompt workflow</li>
               <li>Great for first-time users</li>
             </ul>
-            <a class="btn btn--secondary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Start free</a>
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/" data-app-link>Start free</a>
           </article>
 
           <article class="price-card price-card--featured">

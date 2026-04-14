@@ -35,7 +35,12 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
                     if current_plan == "pro":
                         st.caption("You are currently on the Pro plan.")
                     else:
-                        if st.button("Upgrade to Pro", key="upgrade_pro", use_container_width=True):
+                        if st.button(
+                            "Upgrade to Pro",
+                            key="upgrade_pro",
+                            type="primary",
+                            use_container_width=True,
+                        ):
                             try:
                                 session = billing_service.create_checkout_session(
                                     customer_email=user["email"],
@@ -56,7 +61,7 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
     customer_id = profile.get("stripe_customer_id")
     if customer_id:
         st.markdown("")
-        if st.button("Manage billing portal", use_container_width=True):
+        if st.button("Manage billing portal", type="primary", use_container_width=True):
             try:
                 portal = billing_service.create_billing_portal_session(
                     customer_id,
