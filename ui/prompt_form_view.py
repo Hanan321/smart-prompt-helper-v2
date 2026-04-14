@@ -11,7 +11,7 @@ def prompt_form_panel(
     st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
 
     st.markdown(
-        "<div class='subtitle'>Turn your idea into a high-quality AI prompt in seconds.</div>",
+        "<div class='subtitle'>Transform your topic, notes, or rough idea into a polished prompt ready for AI tools.</div>",
         unsafe_allow_html=True,
     )
 
@@ -144,6 +144,6 @@ def prompt_form_panel(
                     )
                     increment_prompt_count(supabase_admin, user["id"])
                     st.session_state.generated_prompt = final_prompt
-                    st.success("Your prompt is ready.")
+                    st.success("Your prompt has been generated successfully.")
                 except Exception as exc:
                     st.error(f"Something went wrong: {exc}")

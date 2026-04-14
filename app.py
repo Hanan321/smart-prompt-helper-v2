@@ -27,13 +27,18 @@ from services.usage import (
 )
 from ui.account_view import account_summary_panel
 from ui.auth_view import auth_panel
+from ui.landing_view import landing_page
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
 from ui.subscription_view import subscription_panel
 
 
-st.set_page_config(page_title="Smart Prompt Helper", page_icon="🎓", layout="centered")
+st.set_page_config(
+    page_title="Smart Prompt Helper",
+    page_icon="🎓",
+    layout="centered",
+)
 
 
 settings = get_settings()
@@ -47,6 +52,7 @@ cookie_password = os.getenv("COOKIES_PASSWORD", "")
 if not cookie_password:
     st.error("Missing COOKIES_PASSWORD environment variable.")
     st.stop()
+
 
 cookies = EncryptedCookieManager(
     prefix="smart-prompt-helper/",
@@ -69,6 +75,9 @@ prompt_generator = PromptGenerator(settings.openai_api_key)
 billing_service = BillingService(settings.stripe_secret_key)
 
 
+# ----------------------------
+# Session State Defaults
+# ----------------------------
 if "session" not in st.session_state:
     st.session_state.session = None
 
@@ -84,8 +93,14 @@ if "auth_restored" not in st.session_state:
 if "show_welcome" not in st.session_state:
     st.session_state.show_welcome = True
 
+if "page" not in st.session_state:
+    st.session_state.page = "home"
 
-# Handle auth session from email link BEFORE restoring old cookies
+
+# ----------------------------
+# Handle auth session from email link
+# Must happen BEFORE restoring old cookies
+# ----------------------------
 query_params = st.query_params
 url_access_token = query_params.get("access_token")
 url_refresh_token = query_params.get("refresh_token")
@@ -105,6 +120,7 @@ if url_access_token and url_refresh_token:
         save_auth_cookies(cookies, restored)
         st.session_state.auth_restored = True
         st.session_state.show_welcome = True
+        st.session_state.page = "app"
 
     st.query_params.clear()
     st.rerun()
@@ -129,15 +145,14 @@ def app_panel(user: dict) -> None:
     monthly_used = get_monthly_prompt_count(supabase_admin, user["id"])
     monthly_limit = get_monthly_prompt_limit(supabase_admin, user["id"])
 
-    st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='subtitle'>AI prompt support for academic writing, research, and higher education.</div>",
+        "<div class='main-title'>🎓 Smart Prompt Helper</div>",
         unsafe_allow_html=True,
     )
-
-    #if st.session_state.show_welcome:
-        #st.success(f"Welcome, {display_name}! Your account is ready.")
-        #st.session_state.show_welcome = False
+    st.markdown(
+        "<div class='subtitle'>Generate clear, structured, high-quality prompts for academic and professional work.</div>",
+        unsafe_allow_html=True,
+    )
 
     account_summary_panel(
         display_name,
@@ -165,10 +180,23 @@ def app_panel(user: dict) -> None:
     subscription_panel(profile, user, billing_service, settings)
 
 
+# ----------------------------
+# Global styling + auth restore
+# ----------------------------
 render_styles()
 restore_auth_once(cookies, supabase_auth)
 
-if not st.session_state.user:
+if st.session_state.user:
+    st.session_state.page = "app"
+
+
+# ----------------------------
+# Routing
+# ----------------------------
+if st.session_state.page == "home" and not st.session_state.user:
+    landing_page()
+
+elif not st.session_state.user:
     auth_panel(
         supabase_auth,
         supabase_admin,
@@ -181,5 +209,6 @@ if not st.session_state.user:
         reset_password_for_email,
         settings,
     )
+
 else:
     app_panel(st.session_state.user)

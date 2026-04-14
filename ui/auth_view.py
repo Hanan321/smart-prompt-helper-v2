@@ -15,9 +15,13 @@ def auth_panel(
 ) -> None:
     st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='subtitle'>AI prompt support for academic writing, research, and higher education.</div>",
+        "<div class='subtitle'>Generate clear, structured, high-quality prompts for academic and professional work.</div>",
         unsafe_allow_html=True,
     )
+
+    if st.button("← Back to Home"):
+        st.session_state.page = "home"
+        st.rerun()
 
     query_params = st.query_params
     error = query_params.get("error")
@@ -202,7 +206,7 @@ def auth_panel(
                             )
 
                         st.success(
-                            "Account created successfully. Please check your email and confirm your address before logging in."
+                            "Your account has been created successfully. Please check your email to confirm your address before logging in."
                         )
                         st.info(
                             "If you do not receive the confirmation email right away, use the resend confirmation option in the Log In tab."
@@ -253,3 +257,4 @@ def auth_panel(
                         )
                     except Exception as exc:
                         st.error(f"Could not send reset email: {exc}")
+    
