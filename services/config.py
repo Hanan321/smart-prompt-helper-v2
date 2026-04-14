@@ -16,6 +16,7 @@ class Settings:
     stripe_publishable_key: str
     stripe_price_pro: str
     app_base_url: str
+    home_url: str
     free_total_prompt_limit: int = 5
     pro_monthly_prompt_limit: int = 200
 
@@ -45,6 +46,7 @@ def get_settings() -> Settings:
         stripe_publishable_key=_from_env("STRIPE_PUBLISHABLE_KEY"),
         stripe_price_pro=_from_env("STRIPE_PRICE_PRO"),
         app_base_url=_from_env("APP_BASE_URL", "http://localhost:8501"),
+        home_url=_from_env("HOME_URL", "https://smartprompthelper.com"),
         free_total_prompt_limit=_from_env_int("FREE_TOTAL_PROMPT_LIMIT", 5),
         pro_monthly_prompt_limit=_from_env_int("PRO_MONTHLY_PROMPT_LIMIT", 200),
     )

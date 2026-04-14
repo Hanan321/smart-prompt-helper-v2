@@ -19,9 +19,7 @@ def auth_panel(
         unsafe_allow_html=True,
     )
 
-    if st.button("← Back to Home"):
-        st.session_state.page = "home"
-        st.rerun()
+    st.link_button("← Back to Home", settings.home_url)
 
     query_params = st.query_params
     error = query_params.get("error")
