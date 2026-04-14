@@ -34,7 +34,12 @@ def render_styles() -> None:
         [data-testid="stAppViewContainer"],
         [data-testid="stSidebar"] {
             color: var(--ink);
-            background: var(--app-bg);
+            background:
+                linear-gradient(rgba(247, 248, 245, 0.9), rgba(247, 248, 245, 0.94)),
+                url("https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=2200&q=80");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
 
         [data-testid="stHeader"] {
