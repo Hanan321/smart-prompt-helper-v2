@@ -26,17 +26,25 @@ def auth_panel(
     auth_message = None
     show_resend = True
 
-    # Only show URL-based messages for real errors.
-    # Do not treat "type=signup" alone as a success or active confirmation state.
+    # Show only real auth-link errors from the URL
     if error or error_code:
         error_text = f"{error} {error_code}".lower()
 
         if "otp_expired" in error_text:
-            auth_message = ("warning", "This confirmation link has expired. Please request a new one below.")
+            auth_message = (
+                "warning",
+                "This confirmation link has expired. Please request a new one below.",
+            )
         elif "access_denied" in error_text:
-            auth_message = ("warning", "This confirmation link is invalid or has already been used.")
+            auth_message = (
+                "warning",
+                "This confirmation link is invalid or has already been used.",
+            )
         else:
-            auth_message = ("warning", "There was an issue with the authentication link.")
+            auth_message = (
+                "warning",
+                "There was an issue with the authentication link.",
+            )
 
     if auth_message:
         level, message = auth_message
@@ -45,7 +53,9 @@ def auth_panel(
         else:
             st.info(message)
 
-    login_tab, signup_tab, reset_tab = st.tabs(["Log In", "Create Account", "Forgot Password"])
+    login_tab, signup_tab, reset_tab = st.tabs(
+        ["Log In", "Create Account", "Forgot Password"]
+    )
 
     with login_tab:
         with st.form("login_form"):
@@ -54,7 +64,7 @@ def auth_panel(
             submitted = st.form_submit_button("Log in", use_container_width=True)
 
             if submitted:
-                clean_email = email.strip()
+                clean_email = email.strip().lower()
 
                 if not clean_email or not password:
                     st.error("Please enter both email and password.")
@@ -76,8 +86,15 @@ def auth_panel(
                     except Exception as exc:
                         error_msg = str(exc).lower()
 
-                        if "email_not_confirmed" in error_msg or "email not confirmed" in error_msg:
-                            st.error("Please confirm your email before logging in. Check your inbox.")
+                        if (
+                            "email_not_confirmed" in error_msg
+                            or "email not confirmed" in error_msg
+                        ):
+                            st.error(
+                                "Please confirm your email before logging in. Check your inbox, or use the resend option below."
+                            )
+                        elif "invalid login credentials" in error_msg:
+                            st.error("Incorrect email or password.")
                         else:
                             st.error("Login failed. Please check your credentials.")
 
@@ -86,14 +103,17 @@ def auth_panel(
             st.markdown("**Didn't get the confirmation email?**")
 
             with st.form("resend_confirmation_form"):
-                resend_email = st.text_input("Email for confirmation link", key="resend_email")
+                resend_email = st.text_input(
+                    "Email for confirmation link",
+                    key="resend_email",
+                )
                 resend_submitted = st.form_submit_button(
                     "Resend confirmation email",
                     use_container_width=True,
                 )
 
                 if resend_submitted:
-                    clean_email = resend_email.strip()
+                    clean_email = resend_email.strip().lower()
 
                     if not clean_email:
                         st.error("Please enter your email address.")
@@ -104,31 +124,48 @@ def auth_panel(
                                 email=clean_email,
                                 email_redirect_to=settings.app_base_url,
                             )
-                            st.success("Confirmation email sent. Please check your inbox.")
+                            st.success(
+                                "Confirmation email sent. Please check your inbox."
+                            )
                         except Exception as exc:
                             error_msg = str(exc).lower()
 
                             if "over_email_send_rate_limit" in error_msg:
-                                st.error("Too many emails were sent recently. Please wait a bit and try again.")
+                                st.error(
+                                    "Too many emails were sent recently. Please wait a little and try again."
+                                )
+                            elif "user not found" in error_msg:
+                                st.error(
+                                    "We could not find an account with that email address."
+                                )
                             else:
-                                st.error(f"Could not resend confirmation email: {exc}")
+                                st.error(
+                                    f"Could not resend confirmation email: {exc}"
+                                )
 
     with signup_tab:
         with st.form("signup_form"):
             username = st.text_input("Username", key="signup_username")
             email = st.text_input("Email", key="signup_email")
-            password = st.text_input("Password", type="password", key="signup_password")
+            password = st.text_input(
+                "Password",
+                type="password",
+                key="signup_password",
+            )
             confirm_password = st.text_input(
                 "Confirm Password",
                 type="password",
                 key="signup_confirm_password",
             )
 
-            submitted = st.form_submit_button("Create account", use_container_width=True)
+            submitted = st.form_submit_button(
+                "Create account",
+                use_container_width=True,
+            )
 
             if submitted:
                 clean_username = username.strip()
-                clean_email = email.strip()
+                clean_email = email.strip().lower()
 
                 if not clean_username:
                     st.error("Please enter a username.")
@@ -167,9 +204,29 @@ def auth_panel(
                         st.success(
                             "Account created successfully. Please check your email and confirm your address before logging in."
                         )
+                        st.info(
+                            "If you do not receive the confirmation email right away, use the resend confirmation option in the Log In tab."
+                        )
 
                     except Exception as exc:
-                        st.error(f"Sign up failed: {exc}")
+                        error_msg = str(exc).lower()
+
+                        if (
+                            "over_email_send_rate_limit" in error_msg
+                            or "email rate limit" in error_msg
+                        ):
+                            st.warning(
+                                "Your account may have been created, but the confirmation email could not be sent yet because the email sending limit was reached. "
+                                "Please wait a little, then use the resend confirmation option in the Log In tab."
+                            )
+                        elif "user already registered" in error_msg:
+                            st.error(
+                                "This email is already registered. Please log in or confirm your email."
+                            )
+                        elif "password should be at least" in error_msg:
+                            st.error("Password must be at least 8 characters long.")
+                        else:
+                            st.error(f"Sign up failed: {exc}")
 
     with reset_tab:
         with st.form("forgot_password_form"):
@@ -180,7 +237,7 @@ def auth_panel(
             )
 
             if reset_submitted:
-                clean_email = reset_email.strip()
+                clean_email = reset_email.strip().lower()
 
                 if not clean_email:
                     st.error("Please enter your email address.")
@@ -191,6 +248,8 @@ def auth_panel(
                             email=clean_email,
                             redirect_to=settings.app_base_url,
                         )
-                        st.success("Password reset email sent. Please check your inbox.")
+                        st.success(
+                            "Password reset email sent. Please check your inbox."
+                        )
                     except Exception as exc:
                         st.error(f"Could not send reset email: {exc}")
