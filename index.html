@@ -1,66 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Prompt Helper</title>
   <meta name="description" content="Turn rough ideas into clear, structured, research-quality AI prompts in seconds." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #07111f;
-      --bg-soft: #0b1830;
-      --card: rgba(15, 27, 50, 0.72);
-      --card-border: rgba(148, 163, 184, 0.16);
+      --bg-2: #0b1730;
+      --panel: rgba(12, 22, 42, 0.72);
+      --panel-solid: #0d1830;
+      --border: rgba(148, 163, 184, 0.15);
       --text: #f8fafc;
       --muted: #b7c2d6;
-      --accent: #7c9cff;
-      --accent-2: #9f86ff;
-      --success: #8ee3c4;
-      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --accent: #8da2ff;
+      --accent-2: #b08cff;
+      --success: #93e7ca;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
       --radius-xl: 28px;
       --radius-lg: 20px;
-      --radius-md: 16px;
-      --max: 1180px;
+      --radius-md: 14px;
+      --container: 1180px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+    }
 
     body {
-      margin: 0;
-      font-family: Inter, sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(124, 156, 255, 0.18), transparent 32%),
-        radial-gradient(circle at top right, rgba(159, 134, 255, 0.16), transparent 28%),
-        linear-gradient(180deg, #06101d 0%, #081426 45%, #07111f 100%);
+      font-family: 'Inter', sans-serif;
       color: var(--text);
-      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(141, 162, 255, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(176, 140, 255, 0.14), transparent 26%),
+        linear-gradient(180deg, #06101d 0%, #081426 46%, #07111f 100%);
+      line-height: 1.65;
     }
 
-    a { color: inherit; text-decoration: none; }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
 
-    .shell {
-      width: min(100% - 32px, var(--max));
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .container {
+      width: min(calc(100% - 32px), var(--container));
       margin: 0 auto;
+    }
+
+    .section {
+      padding: 38px 0;
+    }
+
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
     }
 
     .nav {
       position: sticky;
       top: 0;
-      z-index: 20;
-      backdrop-filter: blur(18px);
-      background: rgba(7, 17, 31, 0.72);
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      background: rgba(7, 17, 31, 0.74);
       border-bottom: 1px solid rgba(148, 163, 184, 0.08);
     }
 
-    .nav-inner {
+    .nav__inner {
+      min-height: 78px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 18px 0;
+      gap: 20px;
     }
 
     .brand {
@@ -68,32 +96,35 @@
       align-items: center;
       gap: 12px;
       font-weight: 800;
+      font-size: 1.05rem;
       letter-spacing: -0.03em;
     }
 
-    .brand-badge {
-      width: 40px;
-      height: 40px;
+    .brand__logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
       display: grid;
       place-items: center;
-      border-radius: 14px;
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: white;
-      box-shadow: var(--shadow);
-      font-size: 20px;
+      box-shadow: 0 10px 30px rgba(141, 162, 255, 0.28);
+      font-size: 1.15rem;
+      font-weight: 800;
     }
 
-    .nav-links {
+    .nav__links {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 24px;
       color: var(--muted);
       font-size: 0.96rem;
     }
 
-    .nav-links a:hover { color: var(--text); }
+    .nav__links a:hover {
+      color: var(--text);
+    }
 
-    .nav-actions {
+    .nav__actions {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -103,38 +134,40 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
       min-height: 48px;
       padding: 0 20px;
       border-radius: 14px;
       border: 1px solid transparent;
       font-weight: 700;
-      font-size: 0.98rem;
-      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      font-size: 0.97rem;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
       cursor: pointer;
+      white-space: nowrap;
     }
 
-    .btn:hover { transform: translateY(-1px); }
+    .btn:hover {
+      transform: translateY(-1px);
+    }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    .btn--primary {
       color: white;
-      box-shadow: 0 12px 28px rgba(124, 156, 255, 0.28);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 28px rgba(141, 162, 255, 0.28);
     }
 
-    .btn-secondary {
+    .btn--secondary {
+      color: var(--text);
       background: rgba(255, 255, 255, 0.03);
       border-color: rgba(148, 163, 184, 0.2);
-      color: var(--text);
     }
 
     .hero {
-      padding: 72px 0 40px;
+      padding: 78px 0 44px;
     }
 
-    .hero-grid {
+    .hero__grid {
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 28px;
       align-items: center;
     }
@@ -144,8 +177,8 @@
       align-items: center;
       gap: 10px;
       padding: 10px 14px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
       border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
       background: rgba(255, 255, 255, 0.03);
       color: #d7e3ff;
       font-size: 0.92rem;
@@ -153,198 +186,194 @@
       margin-bottom: 18px;
     }
 
-    .hero h1 {
-      margin: 0;
-      font-size: clamp(2.8rem, 5vw, 5rem);
-      line-height: 1.03;
-      letter-spacing: -0.055em;
-      max-width: 12ch;
+    .hero__title {
+      max-width: 10.5ch;
+      font-size: clamp(3rem, 6vw, 5.3rem);
+      font-weight: 800;
+      line-height: 0.96;
+      letter-spacing: -0.07em;
+      margin-bottom: 20px;
+      text-wrap: balance;
     }
 
-    .hero p {
+    .hero__title .gradient {
+      background: linear-gradient(90deg, #ffffff 0%, #e8ecff 45%, #b9c5ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero__text {
+      max-width: 60ch;
       color: var(--muted);
-      font-size: 1.08rem;
+      font-size: 1.06rem;
       line-height: 1.8;
-      max-width: 62ch;
-      margin: 22px 0 28px;
+      margin-bottom: 28px;
     }
 
-    .hero-actions {
+    .hero__actions {
       display: flex;
       flex-wrap: wrap;
       gap: 14px;
       margin-bottom: 20px;
     }
 
-    .hero-note {
-      color: #ced7e8;
+    .hero__note {
+      color: #d4dcef;
       font-size: 0.95rem;
     }
 
-    .hero-note strong { color: white; }
-
-    .glass-card {
-      border: 1px solid var(--card-border);
-      background: var(--card);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
-      border-radius: var(--radius-xl);
+    .hero__note strong {
+      color: var(--text);
     }
 
-    .preview {
+    .hero__preview {
       padding: 18px;
       position: relative;
       overflow: hidden;
+      border-radius: var(--radius-xl);
+      background: linear-gradient(180deg, rgba(12,22,42,0.78), rgba(10,18,34,0.88));
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
     }
 
-    .preview::before {
+    .hero__preview::after {
       content: "";
       position: absolute;
-      inset: auto -10% 70% auto;
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, rgba(124, 156, 255, 0.22), transparent 65%);
+      width: 240px;
+      height: 240px;
+      right: -80px;
+      top: -80px;
+      background: radial-gradient(circle, rgba(141, 162, 255, 0.24), transparent 70%);
       pointer-events: none;
     }
 
-    .window-bar {
+    .window {
       display: flex;
-      align-items: center;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
-    .dot {
+    .window span {
       width: 10px;
       height: 10px;
       border-radius: 50%;
       background: rgba(255,255,255,0.35);
     }
 
-    .preview-layout {
+    .preview-stack {
       display: grid;
       gap: 14px;
     }
 
-    .mini-card {
+    .mini {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(148, 163, 184, 0.12);
       border-radius: 18px;
       padding: 16px;
     }
 
-    .mini-label {
-      font-size: 0.78rem;
+    .mini__label {
+      color: #9fb4ff;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #9fb4ff;
-      margin-bottom: 10px;
-      font-weight: 700;
+      font-size: 0.76rem;
+      font-weight: 800;
+      margin-bottom: 8px;
     }
 
-    .mini-title {
-      font-size: 1.05rem;
+    .mini__title {
+      font-size: 1.02rem;
       font-weight: 700;
       margin-bottom: 8px;
     }
 
-    .mini-text {
+    .mini__text {
       color: var(--muted);
-      line-height: 1.65;
       font-size: 0.95rem;
+      line-height: 1.7;
     }
 
-    .prompt-box {
-      margin-top: 8px;
-      background: linear-gradient(180deg, rgba(124,156,255,0.08), rgba(255,255,255,0.02));
-      border: 1px solid rgba(124, 156, 255, 0.16);
-      border-radius: 18px;
+    .prompt {
+      margin-top: 10px;
       padding: 16px;
-      color: #edf3ff;
-      line-height: 1.7;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(141,162,255,0.08), rgba(255,255,255,0.02));
+      border: 1px solid rgba(141, 162, 255, 0.16);
+      color: #eef3ff;
       font-size: 0.94rem;
+      line-height: 1.72;
     }
 
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      margin-top: 26px;
+      margin-top: 28px;
     }
 
     .stat {
       padding: 18px;
       border-radius: 18px;
       border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255,255,255,0.03);
     }
 
     .stat strong {
       display: block;
-      font-size: 1.35rem;
       margin-bottom: 6px;
+      font-size: 1.2rem;
+      letter-spacing: -0.04em;
     }
 
     .stat span {
       color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-
-    section {
-      padding: 34px 0;
+      font-size: 0.94rem;
+      line-height: 1.7;
     }
 
     .section-head {
       max-width: 760px;
-      margin: 0 auto 24px;
+      margin: 0 auto 26px;
       text-align: center;
     }
 
     .section-head h2 {
-      margin: 0 0 12px;
-      font-size: clamp(2rem, 3vw, 3rem);
-      letter-spacing: -0.04em;
+      font-size: clamp(2rem, 3.2vw, 3rem);
+      letter-spacing: -0.05em;
+      line-height: 1.05;
+      margin-bottom: 12px;
     }
 
     .section-head p {
-      margin: 0;
       color: var(--muted);
+      font-size: 1.02rem;
       line-height: 1.8;
-      font-size: 1.04rem;
     }
 
-    .problem-grid,
-    .feature-grid,
-    .pricing-grid,
-    .steps-grid {
+    .grid-3,
+    .grid-2 {
       display: grid;
       gap: 20px;
     }
 
-    .problem-grid { grid-template-columns: repeat(3, 1fr); }
-    .steps-grid { grid-template-columns: repeat(3, 1fr); }
-    .feature-grid { grid-template-columns: repeat(3, 1fr); }
-    .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
 
-    .card {
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .feature-card,
+    .step-card,
+    .price-card,
+    .issue-card {
       padding: 24px;
       border-radius: var(--radius-lg);
       border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255,255,255,0.03);
       box-shadow: var(--shadow);
-    }
-
-    .card h3 {
-      margin: 0 0 12px;
-      font-size: 1.2rem;
-      letter-spacing: -0.03em;
-    }
-
-    .card p, .card li {
-      color: var(--muted);
-      line-height: 1.75;
-      font-size: 0.98rem;
     }
 
     .icon {
@@ -353,117 +382,156 @@
       border-radius: 16px;
       display: grid;
       place-items: center;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, rgba(124,156,255,0.22), rgba(159,134,255,0.18));
-      color: #dce7ff;
+      background: linear-gradient(135deg, rgba(141,162,255,0.22), rgba(176,140,255,0.18));
       font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+
+    .issue-card h3,
+    .step-card h3,
+    .feature-card h3,
+    .price-card h3 {
+      font-size: 1.18rem;
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+
+    .issue-card p,
+    .step-card p,
+    .feature-card p,
+    .price-card p {
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.75;
     }
 
     .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
       width: 36px;
       height: 36px;
-      border-radius: 999px;
-      background: rgba(124, 156, 255, 0.14);
-      color: #cfe0ff;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(141, 162, 255, 0.14);
+      color: #dbe6ff;
       font-weight: 800;
       margin-bottom: 14px;
     }
 
-    .chip-row {
+    .chips {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 18px;
+      justify-content: center;
     }
 
     .chip {
       padding: 10px 14px;
       border-radius: 999px;
-      background: rgba(124, 156, 255, 0.12);
-      border: 1px solid rgba(124, 156, 255, 0.16);
+      background: rgba(141, 162, 255, 0.12);
+      border: 1px solid rgba(141, 162, 255, 0.16);
       color: #dbe6ff;
       font-size: 0.92rem;
       font-weight: 700;
     }
 
-    .pricing-card {
-      position: relative;
-      overflow: hidden;
+    .showcase {
+      padding: 28px;
     }
 
-    .pricing-card.featured {
-      border-color: rgba(124, 156, 255, 0.34);
-      background: linear-gradient(180deg, rgba(124,156,255,0.08), rgba(255,255,255,0.03));
+    .showcase__text {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 1.02rem;
+      line-height: 1.85;
+    }
+
+    .pricing-head {
+      margin-bottom: 12px;
     }
 
     .badge {
       display: inline-flex;
       padding: 8px 12px;
       border-radius: 999px;
-      background: rgba(142, 227, 196, 0.14);
+      background: rgba(147, 231, 202, 0.14);
       color: var(--success);
+      font-size: 0.83rem;
       font-weight: 800;
-      font-size: 0.84rem;
       margin-bottom: 14px;
     }
 
-    .price {
-      font-size: 2.5rem;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      margin: 4px 0 8px;
+    .price-card--featured {
+      background: linear-gradient(180deg, rgba(141,162,255,0.08), rgba(255,255,255,0.03));
+      border-color: rgba(141, 162, 255, 0.28);
     }
 
-    .muted { color: var(--muted); }
+    .price-value {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      margin-bottom: 8px;
+    }
 
-    ul.clean {
+    .price-sub {
+      color: var(--muted);
+      font-size: 0.96rem;
+      margin-bottom: 16px;
+    }
+
+    .checklist {
       list-style: none;
-      padding: 0;
-      margin: 18px 0 0;
       display: grid;
       gap: 10px;
+      margin-bottom: 22px;
     }
 
-    ul.clean li::before {
-      content: "✓";
+    .checklist li {
+      color: var(--muted);
+      font-size: 0.97rem;
+      line-height: 1.7;
+    }
+
+    .checklist li::before {
+      content: '✓';
       color: var(--success);
       font-weight: 800;
       margin-right: 10px;
     }
 
-    .cta-band {
+    .cta {
       padding: 34px;
-      border-radius: 28px;
-      border: 1px solid rgba(124,156,255,0.18);
-      background: linear-gradient(135deg, rgba(124,156,255,0.12), rgba(159,134,255,0.08));
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(141, 162, 255, 0.18);
+      background: linear-gradient(135deg, rgba(141,162,255,0.12), rgba(176,140,255,0.08));
       text-align: center;
       box-shadow: var(--shadow);
     }
 
-    .cta-band h2 {
-      margin: 0 0 12px;
+    .cta h2 {
       font-size: clamp(2rem, 3vw, 3rem);
-      letter-spacing: -0.04em;
+      line-height: 1.06;
+      letter-spacing: -0.05em;
+      margin-bottom: 12px;
     }
 
-    .cta-band p {
+    .cta p {
+      max-width: 760px;
       margin: 0 auto 22px;
-      max-width: 700px;
       color: var(--muted);
-      line-height: 1.8;
       font-size: 1.02rem;
+      line-height: 1.8;
     }
 
     .footer {
-      padding: 28px 0 50px;
+      padding: 28px 0 54px;
       color: var(--muted);
-      font-size: 0.95rem;
+      font-size: 0.94rem;
     }
 
-    .footer-inner {
+    .footer__inner {
       display: flex;
       justify-content: space-between;
       gap: 16px;
@@ -473,68 +541,101 @@
     }
 
     @media (max-width: 980px) {
-      .hero-grid,
-      .problem-grid,
-      .steps-grid,
-      .feature-grid,
-      .pricing-grid {
+      .hero__grid,
+      .grid-3,
+      .grid-2,
+      .stats {
         grid-template-columns: 1fr;
       }
 
-      .stats { grid-template-columns: 1fr; }
+      .hero__title {
+        max-width: 100%;
+      }
 
-      .nav-links { display: none; }
-
-      .hero h1 { max-width: 100%; }
+      .nav__links {
+        display: none;
+      }
     }
 
     @media (max-width: 640px) {
-      .shell { width: min(100% - 20px, var(--max)); }
-      .hero { padding-top: 44px; }
-      .nav-inner { padding: 14px 0; }
-      .nav-actions .btn-secondary { display: none; }
-      .cta-band, .card, .preview { padding: 20px; }
-      .hero-actions { flex-direction: column; }
-      .btn { width: 100%; }
+      .container {
+        width: min(calc(100% - 20px), var(--container));
+      }
+
+      .hero {
+        padding-top: 44px;
+      }
+
+      .nav__inner {
+        min-height: 70px;
+      }
+
+      .nav__actions .btn--secondary {
+        display: none;
+      }
+
+      .hero__actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .showcase,
+      .cta,
+      .feature-card,
+      .step-card,
+      .price-card,
+      .issue-card,
+      .hero__preview {
+        padding: 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <nav class="nav">
-    <div class="shell nav-inner">
-      <a href="#top" class="brand">
-        <span class="brand-badge">✦</span>
+  <header class="nav">
+    <div class="container nav__inner">
+      <a class="brand" href="#top">
+        <span class="brand__logo">✦</span>
         <span>Smart Prompt Helper</span>
       </a>
-      <div class="nav-links">
+
+      <nav class="nav__links">
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
-      </div>
-      <div class="nav-actions">
-        <a class="btn btn-secondary" href="#pricing">View pricing</a>
-        <a class="btn btn-primary" href="/app">Get started</a>
+      </nav>
+
+      <div class="nav__actions">
+        <a class="btn btn--secondary" href="#pricing">View pricing</a>
+        <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Get started</a>
       </div>
     </div>
-  </nav>
+  </header>
 
   <main id="top">
     <section class="hero">
-      <div class="shell hero-grid">
+      <div class="container hero__grid">
         <div>
           <div class="eyebrow">Built for academic and professional workflows</div>
-          <h1>Turn rough ideas into research-quality AI prompts.</h1>
-          <p>
-            Smart Prompt Helper transforms short notes, messy thoughts, and incomplete drafts into clear,
+          <h1 class="hero__title">
+            <span class="gradient">Turn rough ideas</span><br>
+            <span class="gradient">into research-quality</span><br>
+            <span class="gradient">AI prompts.</span>
+          </h1>
+          <p class="hero__text">
+            Smart Prompt Helper transforms short notes, rough thoughts, and incomplete drafts into clear,
             structured prompts designed to get stronger results from AI tools like ChatGPT.
           </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="/app">Generate your first prompt</a>
-            <a class="btn btn-secondary" href="#how">See how it works</a>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Generate your first prompt</a>
+            <a class="btn btn--secondary" href="#how">See how it works</a>
           </div>
-          <div class="hero-note">
+          <p class="hero__note">
             Designed for <strong>Undergraduate</strong>, <strong>Graduate</strong>, and <strong>Researcher / Professional</strong> users.
-          </div>
+          </p>
 
           <div class="stats">
             <div class="stat">
@@ -543,7 +644,7 @@
             </div>
             <div class="stat">
               <strong>Clear structure</strong>
-              <span>Prompts are crafted for stronger output, better clarity, and more reliable responses.</span>
+              <span>Prompts are designed for stronger output, better clarity, and more reliable AI responses.</span>
             </div>
             <div class="stat">
               <strong>Free to start</strong>
@@ -552,22 +653,24 @@
           </div>
         </div>
 
-        <div class="glass-card preview">
-          <div class="window-bar">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
+        <div class="hero__preview">
+          <div class="window">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
-          <div class="preview-layout">
-            <div class="mini-card">
-              <div class="mini-label">Input</div>
-              <div class="mini-title">Research topic + rough notes</div>
-              <div class="mini-text">“Need research questions about naltrexone implants vs oral naltrexone for treatment adherence.”</div>
+
+          <div class="preview-stack">
+            <div class="mini">
+              <div class="mini__label">Input</div>
+              <div class="mini__title">Research topic + rough notes</div>
+              <div class="mini__text">Need research questions about naltrexone implants vs oral naltrexone for treatment adherence.</div>
             </div>
-            <div class="mini-card">
-              <div class="mini-label">Output</div>
-              <div class="mini-title">Structured prompt</div>
-              <div class="prompt-box">
+
+            <div class="mini">
+              <div class="mini__label">Output</div>
+              <div class="mini__title">Structured prompt</div>
+              <div class="prompt">
                 Act as a graduate-level research methods assistant. Based on the topic below, generate focused, academically rigorous research questions organized by efficacy, adherence, safety, patient outcomes, and implementation.
               </div>
             </div>
@@ -576,8 +679,8 @@
       </div>
     </section>
 
-    <section>
-      <div class="shell">
+    <section class="section">
+      <div class="container">
         <div class="section-head">
           <h2>Why people struggle with AI prompts</h2>
           <p>
@@ -585,80 +688,90 @@
             That is where frustration starts.
           </p>
         </div>
-        <div class="problem-grid">
-          <div class="card">
+
+        <div class="grid-3">
+          <article class="issue-card">
             <div class="icon">?</div>
             <h3>Unclear input</h3>
             <p>Good ideas often start as short notes or rough thoughts, but AI tools respond better to clear structure and direction.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="issue-card">
             <div class="icon">~</div>
             <h3>Generic output</h3>
             <p>When the prompt is weak, the result usually sounds vague, repetitive, or not detailed enough for serious work.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="issue-card">
             <div class="icon">↻</div>
             <h3>Too much retrying</h3>
-            <p>Users waste time rewriting the same request again and again instead of getting a strong first draft immediately.</p>
-          </div>
+            <p>Users waste time rewriting the same request again and again instead of getting a strong first draft quickly.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="how">
-      <div class="shell">
+    <section class="section" id="how">
+      <div class="container">
         <div class="section-head">
           <h2>Simple, fast, and practical</h2>
           <p>
-            The experience is intentionally guided so users can move from rough idea to polished prompt in a few quick steps.
+            The experience is intentionally guided so users can move from a rough idea to a polished prompt in a few quick steps.
           </p>
         </div>
-        <div class="steps-grid">
-          <div class="card">
+
+        <div class="grid-3">
+          <article class="step-card">
             <div class="step-number">1</div>
             <h3>Choose your audience</h3>
             <p>Select Undergraduate, Graduate, or Researcher / Professional so the prompt matches the right tone, depth, and quality level.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="step-card">
             <div class="step-number">2</div>
             <h3>Select your task</h3>
             <p>Pick the kind of help you need, such as summaries, essays, study guides, outlines, or research questions.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="step-card">
             <div class="step-number">3</div>
             <h3>Enter your idea</h3>
             <p>Paste your topic, paragraph, notes, or draft, and the system turns it into a prompt that is ready to use right away.</p>
-          </div>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="features">
-      <div class="shell">
+    <section class="section" id="features">
+      <div class="container">
         <div class="section-head">
           <h2>Built for real academic and professional use</h2>
           <p>
-            This is not a generic prompt toy. It is designed for serious users who care about clarity, structure, and outputs they can actually use.
+            This is not a generic prompt tool. It is designed for serious users who care about clarity, structure, and outputs they can actually use.
           </p>
         </div>
-        <div class="feature-grid">
-          <div class="card">
+
+        <div class="grid-3">
+          <article class="feature-card">
             <div class="icon">🎓</div>
             <h3>Audience-aware prompting</h3>
             <p>Prompt quality is tailored for the user’s level, from undergraduate coursework to advanced professional writing.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="feature-card">
             <div class="icon">⚡</div>
             <h3>Instant generation</h3>
             <p>Users can move from idea to polished prompt in seconds without learning prompt engineering first.</p>
-          </div>
-          <div class="card">
+          </article>
+
+          <article class="feature-card">
             <div class="icon">🔐</div>
             <h3>Secure account system</h3>
             <p>Authentication, usage tracking, and subscription support make the product ready for real SaaS workflows.</p>
-          </div>
+          </article>
         </div>
-        <div class="chip-row">
+
+        <div class="chips">
           <span class="chip">Undergraduate</span>
           <span class="chip">Graduate</span>
           <span class="chip">Researcher / Professional</span>
@@ -670,62 +783,78 @@
       </div>
     </section>
 
-    <section id="pricing">
-      <div class="shell">
+    <section class="section">
+      <div class="container">
+        <div class="card showcase">
+          <div class="section-head">
+            <h2>Focused on useful output, not unnecessary complexity</h2>
+          </div>
+          <p class="showcase__text">
+            Smart Prompt Helper was created to make AI more useful, not more complicated. Instead of forcing users to learn prompt engineering,
+            it provides a clear, guided workflow that helps them think better, write faster, and get stronger results from AI tools.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="pricing">
+      <div class="container">
         <div class="section-head">
           <h2>Start free, upgrade when you need more</h2>
           <p>
             Keep the first experience simple. Users can explore the core value first, then upgrade only when the tool becomes part of their regular workflow.
           </p>
         </div>
-        <div class="pricing-grid">
-          <div class="card pricing-card">
-            <div class="badge">Free</div>
-            <h3>Free Plan</h3>
-            <div class="price">$0</div>
-            <div class="muted">A simple way to try the platform</div>
-            <ul class="clean">
+
+        <div class="grid-2">
+          <article class="price-card">
+            <div class="pricing-head">
+              <span class="badge">Free</span>
+              <h3>Free Plan</h3>
+            </div>
+            <div class="price-value">$0</div>
+            <div class="price-sub">A simple way to try the platform</div>
+            <ul class="checklist">
               <li>5 prompts to test the core experience</li>
               <li>Full access to the main prompt-generation workflow</li>
               <li>Great for first-time users</li>
             </ul>
-            <div style="margin-top: 22px;">
-              <a class="btn btn-secondary" href="/app">Start free</a>
+            <a class="btn btn--secondary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Start free</a>
+          </article>
+
+          <article class="price-card price-card--featured">
+            <div class="pricing-head">
+              <span class="badge">Most popular</span>
+              <h3>Pro Plan</h3>
             </div>
-          </div>
-          <div class="card pricing-card featured">
-            <div class="badge">Most popular</div>
-            <h3>Pro Plan</h3>
-            <div class="price">$20<span style="font-size:1rem; font-weight:700; color: var(--muted);">/month</span></div>
-            <div class="muted">For more regular and serious use</div>
-            <ul class="clean">
+            <div class="price-value">$20<span style="font-size:1rem; font-weight:700; color: var(--muted);">/month</span></div>
+            <div class="price-sub">For more regular and serious use</div>
+            <ul class="checklist">
               <li>200 prompts per month</li>
               <li>Designed for academic and professional workflows</li>
               <li>Better fit for repeat users and research-heavy work</li>
             </ul>
-            <div style="margin-top: 22px;">
-              <a class="btn btn-primary" href="/app">Get started</a>
-            </div>
-          </div>
+            <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Get started</a>
+          </article>
         </div>
       </div>
     </section>
 
-    <section>
-      <div class="shell">
-        <div class="cta-band">
+    <section class="section">
+      <div class="container">
+        <div class="cta">
           <h2>Get better results from AI without writing better prompts yourself.</h2>
           <p>
             Smart Prompt Helper does the hard part for you: it turns rough ideas into polished, high-quality prompts that are easier to use and more likely to produce strong output.
           </p>
-          <a class="btn btn-primary" href="/app">Create your first prompt</a>
+          <a class="btn btn--primary" href="https://cksrlu3biqpraokzyw4me5.streamlit.app/">Create your first prompt</a>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <div class="shell footer-inner">
+    <div class="container footer__inner">
       <div>© 2026 Smart Prompt Helper</div>
       <div>Built for clearer thinking, stronger writing, and better AI results.</div>
     </div>
