@@ -21,3 +21,5 @@ venv/
 # IDE
 .vscode/
 .idea/
+
+olds.txt

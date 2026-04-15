@@ -93,83 +93,32 @@ supabase_admin = create_supabase_admin_client(
 prompt_generator = PromptGenerator(settings.openai_api_key)
 billing_service = BillingService(settings.stripe_secret_key)
 
+#---------------Gemini Fix----------------------------------
 
 def handle_auth_from_url() -> None:
-    query_params = st.query_params
-    url_access_token = query_params.get("access_token")
-    url_refresh_token = query_params.get("refresh_token")
-    url_type = query_params.get("type")
-    url_mode = query_params.get("mode", "")
-    token_hash = query_params.get("token_hash")
-
-    if url_mode == "reset":
-        st.session_state.is_password_recovery = True
-        st.session_state.page = "reset_password"
-
-    if (
-        url_mode == "reset"
-        and token_hash
-        and not st.session_state.get("auth_restored", False)
-    ):
+    # 1. Get the query parameters from the browser URL
+    params = st.query_params
+    
+    # 2. Look for the 'code' provided by the Supabase recovery email
+    if "code" in params:
         try:
-            verify_response = supabase_auth.auth.verify_otp(
-                {
-                    "token_hash": token_hash,
-                    "type": "recovery",
-                }
-            )
-
-            if hasattr(verify_response, "model_dump"):
-                verify_response = verify_response.model_dump()
-
-            session = verify_response.get("session")
-            user = verify_response.get("user")
-
-            if session and user:
-                st.session_state.session = session
-                st.session_state.user = user
-                st.session_state.auth_restored = True
-                st.session_state.is_password_recovery = True
-                st.session_state.page = "reset_password"
-
-                save_auth_cookies(cookies, {"session": session, "user": user})
-
-                st.query_params.clear()
-                st.rerun()
-            else:
-                st.error("Invalid or expired reset link.")
-                st.stop()
-
-        except Exception as exc:
-            st.error(f"Invalid or expired reset link: {exc}")
-            st.stop()
-
-    if url_access_token and url_refresh_token:
-        clear_auth_cookies(cookies)
-
-        restored = restore_session_from_tokens(
-            supabase_auth,
-            url_access_token,
-            url_refresh_token,
-        )
-
-        if restored:
-            st.session_state.session = restored.get("session")
-            st.session_state.user = restored.get("user")
-            st.session_state.auth_restored = True
-            st.session_state.show_welcome = True
-
-            save_auth_cookies(cookies, restored)
-
-            if url_type == "recovery" or url_mode == "reset":
-                st.session_state.is_password_recovery = True
-                st.session_state.page = "reset_password"
-            else:
-                st.session_state.is_password_recovery = False
-                st.session_state.page = "app"
-
-        st.query_params.clear()
-        st.rerun()
+            # 3. Trade the code for a real, authenticated session
+            # This is the step that was missing!
+            auth_response = supabase_auth.auth.exchange_code_for_session({
+                "auth_code": params["code"]
+            })
+            
+            # 4. Attach the session to your app state
+            st.session_state.session = auth_response.session
+            st.session_state.user = auth_response.user
+            st.session_state.is_password_recovery = True
+            st.session_state.page = "reset_password"
+            
+            # 5. Clear the URL so the browser stays clean
+            st.query_params.clear()
+            
+        except Exception as e:
+            st.error(f"Failed to verify recovery link: {e}")
 #-------------google fix-------------------------
 query_params = st.query_params
 

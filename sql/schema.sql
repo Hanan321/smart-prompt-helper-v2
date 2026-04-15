@@ -15,3 +15,28 @@ create table if not exists public.user_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+
+
+
+
+-- 1. Create a function that inserts a row into public.user_profiles
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.user_profiles (id, email, username, plan)
+  values (
+    new.id, 
+    new.email, 
+    coalesce(new.raw_user_meta_data->>'username', 'User'), 
+    'free'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- 2. Create the trigger that calls the function after every signup
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
