@@ -28,7 +28,7 @@ from services.usage import (
 
 # --- UI Imports ---
 from ui.account_view import account_summary_panel
-from ui.auth_view_old import auth_panel
+from ui.auth_view import auth_panel
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
