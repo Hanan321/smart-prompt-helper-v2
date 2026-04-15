@@ -170,12 +170,12 @@ def reset_password_for_email(
 ) -> Dict[str, Any]:
     try:
         if redirect_to:
-            response = client.auth.reset_password_email(
+            response = client.auth.reset_password_for_email(
                 email,
                 {"redirect_to": redirect_to},
             )
         else:
-            response = client.auth.reset_password_email(email)
+            response = client.auth.reset_password_for_email(email)
 
         return _to_dict(response)
 
