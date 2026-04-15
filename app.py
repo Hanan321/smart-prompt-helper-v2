@@ -109,6 +109,11 @@ query_params = st.query_params
 url_access_token = query_params.get("access_token")
 url_refresh_token = query_params.get("refresh_token")
 url_type = query_params.get("type")
+url_mode = query_params.get("mode", "")
+
+if url_mode == "reset":
+    st.session_state.is_password_recovery = True
+    st.session_state.page = "reset_password"
 
 if url_access_token and url_refresh_token:
     clear_auth_cookies(cookies)
@@ -126,7 +131,7 @@ if url_access_token and url_refresh_token:
         st.session_state.auth_restored = True
         st.session_state.show_welcome = True
 
-        if url_type == "recovery":
+        if url_type == "recovery" or url_mode == "reset":
             st.session_state.is_password_recovery = True
             st.session_state.page = "reset_password"
         else:
@@ -135,7 +140,7 @@ if url_access_token and url_refresh_token:
 
     st.query_params.clear()
     st.rerun()
-
+#----------------------------------------------
 
 def reset_password_panel() -> None:
     st.markdown(
