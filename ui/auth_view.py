@@ -258,7 +258,7 @@ def auth_panel(
                     try:
                         reset_password_for_email(
                             supabase_auth,
-                            email=clean_email,
+                            email,
                             redirect_to=settings.app_base_url,
                         )
                         st.success(
