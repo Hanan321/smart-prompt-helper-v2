@@ -12,7 +12,6 @@ from services.auth import (
     restore_session_from_tokens,
     sign_in,
     sign_up,
-    update_password,
 )
 from services.billing import BillingService
 from services.config import get_settings, validate_settings
@@ -162,7 +161,7 @@ def reset_password_panel() -> None:
                 st.error("Passwords do not match.")
             else:
                 try:
-                    update_password(supabase_auth, new_password)
+                    supabase_auth.auth.update_user({"password": new_password})
 
                     clear_auth_cookies(cookies)
                     st.session_state.session = None
