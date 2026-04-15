@@ -39,7 +39,6 @@ def account_summary_panel(
 
         st.divider()
         st.write(f"Signed in as **{display_name}**")
-        st.caption(user.get("email", "unknown"))
         st.markdown(
             f"<span class='plan-chip'>Plan: {current_plan.title()}</span>",
             unsafe_allow_html=True,
