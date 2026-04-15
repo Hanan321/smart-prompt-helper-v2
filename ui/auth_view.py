@@ -30,7 +30,10 @@ def auth_panel(
     reset_password_for_email,
     settings,
 ) -> None:
-    st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='main-title'>🎓 Smart Prompt Helper</div>",
+        unsafe_allow_html=True,
+    )
     st.markdown(
         "<div class='subtitle'>Generate clear, structured, high-quality prompts for academic and professional work.</div>",
         unsafe_allow_html=True,
@@ -44,9 +47,7 @@ def auth_panel(
         st.session_state.show_resend_confirmation_form = False
 
     auth_message = None
-    show_resend = True
 
-    # Show only real auth-link errors from the URL
     if error or error_code:
         error_text = f"{error} {error_code}".lower()
 
@@ -116,62 +117,61 @@ def auth_panel(
                         elif "invalid login credentials" in error_msg:
                             st.error("Incorrect email or password.")
                         else:
-                            st.error("Login failed. Please check your credentials.")
+                            st.error(f"Login failed: {exc}")
 
-        if show_resend:
-            st.markdown("---")
-            st.markdown("**Didn't get the confirmation email?**")
+        st.markdown("---")
+        st.markdown("**Didn't get the confirmation email?**")
 
-            if not st.session_state.show_resend_confirmation_form:
-                if st.button(
-                    "Click here",
-                    key="show_resend_confirmation_button",
-                    type="secondary",
-                ):
-                    st.session_state.show_resend_confirmation_form = True
-                    st.rerun()
+        if not st.session_state.show_resend_confirmation_form:
+            if st.button(
+                "Click here",
+                key="show_resend_confirmation_button",
+                type="secondary",
+            ):
+                st.session_state.show_resend_confirmation_form = True
+                st.rerun()
 
-            if st.session_state.show_resend_confirmation_form:
-                with st.form("resend_confirmation_form"):
-                    resend_email = st.text_input(
-                        "Email for confirmation link",
-                        key="resend_email",
-                    )
-                    resend_submitted = st.form_submit_button(
-                        "Resend confirmation email",
-                        use_container_width=True,
-                    )
+        if st.session_state.show_resend_confirmation_form:
+            with st.form("resend_confirmation_form"):
+                resend_email = st.text_input(
+                    "Email for confirmation link",
+                    key="resend_email",
+                )
+                resend_submitted = st.form_submit_button(
+                    "Resend confirmation email",
+                    use_container_width=True,
+                )
 
-                    if resend_submitted:
-                        clean_email = resend_email.strip().lower()
+                if resend_submitted:
+                    clean_email = resend_email.strip().lower()
 
-                        if not clean_email:
-                            st.error("Please enter your email address.")
-                        else:
-                            try:
-                                resend_signup_confirmation(
-                                    supabase_auth,
-                                    email=clean_email,
-                                    email_redirect_to=settings.app_base_url,
+                    if not clean_email:
+                        st.error("Please enter your email address.")
+                    else:
+                        try:
+                            resend_signup_confirmation(
+                                supabase_auth,
+                                email=clean_email,
+                                email_redirect_to=settings.app_base_url,
+                            )
+                            st.success(
+                                "Confirmation email sent. Please check your inbox."
+                            )
+                        except Exception as exc:
+                            error_msg = str(exc).lower()
+
+                            if "over_email_send_rate_limit" in error_msg:
+                                st.error(
+                                    "Too many emails were sent recently. Please wait a little and try again."
                                 )
-                                st.success(
-                                    "Confirmation email sent. Please check your inbox."
+                            elif "user not found" in error_msg:
+                                st.error(
+                                    "We could not find an account with that email address."
                                 )
-                            except Exception as exc:
-                                error_msg = str(exc).lower()
-
-                                if "over_email_send_rate_limit" in error_msg:
-                                    st.error(
-                                        "Too many emails were sent recently. Please wait a little and try again."
-                                    )
-                                elif "user not found" in error_msg:
-                                    st.error(
-                                        "We could not find an account with that email address."
-                                    )
-                                else:
-                                    st.error(
-                                        f"Could not resend confirmation email: {exc}"
-                                    )
+                            else:
+                                st.error(
+                                    f"Could not resend confirmation email: {exc}"
+                                )
 
     with signup_tab:
         with st.form("signup_form"):
@@ -246,8 +246,7 @@ def auth_panel(
                             or "email rate limit" in error_msg
                         ):
                             st.warning(
-                                "Your account may have been created, but the confirmation email could not be sent yet because the email sending limit was reached. "
-                                "Please wait a little, then use the resend confirmation option in the Log In tab."
+                                "Your account may have been created, but the confirmation email could not be sent yet because the email sending limit was reached. Please wait a little, then use the resend confirmation option in the Log In tab."
                             )
                         elif "user already registered" in error_msg:
                             st.error(
@@ -279,13 +278,25 @@ def auth_panel(
                             redirect_to=_with_query_param(
                                 settings.app_base_url,
                                 "mode",
-                                 "reset",
-                                )
+                                "reset",
                             ),
                         )
                         st.success(
                             "Password reset email sent. Please check your inbox."
                         )
+                        st.info(
+                            "Open the link from the email on the same live app URL used in APP_BASE_URL."
+                        )
                     except Exception as exc:
-                        st.error(f"Could not send reset email: {exc}")
-    
+                        error_msg = str(exc).lower()
+
+                        if "error sending recovery email" in error_msg:
+                            st.error(
+                                "Supabase could not send the recovery email. Check that APP_BASE_URL is your live app URL and that the same URL is added in Supabase Authentication redirect settings."
+                            )
+                        elif "over_email_send_rate_limit" in error_msg:
+                            st.error(
+                                "Too many reset emails were requested recently. Please wait a little and try again."
+                            )
+                        else:
+                            st.error(f"Could not send reset email: {exc}")

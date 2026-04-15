@@ -106,7 +106,6 @@ def handle_auth_from_url() -> None:
         st.session_state.is_password_recovery = True
         st.session_state.page = "reset_password"
 
-    # Handle Supabase recovery links with token_hash
     if (
         url_mode == "reset"
         and token_hash
@@ -137,15 +136,14 @@ def handle_auth_from_url() -> None:
 
                 st.query_params.clear()
                 st.rerun()
-
-            st.error("Invalid or expired reset link.")
-            st.stop()
+            else:
+                st.error("Invalid or expired reset link.")
+                st.stop()
 
         except Exception as exc:
             st.error(f"Invalid or expired reset link: {exc}")
             st.stop()
 
-    # Handle access_token / refresh_token links
     if url_access_token and url_refresh_token:
         clear_auth_cookies(cookies)
 
