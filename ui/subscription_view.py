@@ -1,22 +1,4 @@
-from urllib.parse import urlencode, urlsplit, urlunsplit
-
 import streamlit as st
-
-PRO_PAYMENT_LINK_URL = "https://buy.stripe.com/dRmcN4fHc5aedfsb326oo00"
-
-
-def _payment_link_for_user(user_id: str) -> str:
-    parts = urlsplit(PRO_PAYMENT_LINK_URL)
-    query = urlencode({"client_reference_id": user_id})
-    return urlunsplit(
-        (
-            parts.scheme,
-            parts.netloc,
-            parts.path,
-            query,
-            parts.fragment,
-        )
-    )
 
 
 def subscription_panel(profile: dict, user: dict, billing_service, settings) -> None:
@@ -105,13 +87,28 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
                         else:
                             st.caption("This is a test Pro account.")
                     else:
-                        payment_link = _payment_link_for_user(user["id"])
-                        st.link_button(
+                        if st.button(
                             "Upgrade to Pro",
-                            payment_link,
                             type="primary",
                             use_container_width=True,
-                        )
+                        ):
+                            try:
+                                checkout_session = billing_service.create_checkout_session(
+                                    customer_email=user.get("email"),
+                                    plan="pro",
+                                    success_url=settings.app_base_url,
+                                    cancel_url=settings.app_base_url,
+                                    price_id=price_id,
+                                    user_id=user["id"],
+                                )
+                                st.link_button(
+                                    "Continue to secure checkout",
+                                    checkout_session.url,
+                                    type="primary",
+                                    use_container_width=True,
+                                )
+                            except Exception as exc:
+                                st.error(f"Could not start checkout: {exc}")
 
     st.markdown("---")
     st.markdown("**Manage subscription**")

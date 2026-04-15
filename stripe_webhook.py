@@ -42,6 +42,21 @@ def update_user_by_id(user_id: str, update_data: dict) -> None:
     supabase.table("user_profiles").update(update_data).eq("id", user_id).execute()
 
 
+def get_user_id_by_email(email: str | None) -> str | None:
+    if not email:
+        return None
+
+    response = (
+        supabase.table("user_profiles")
+        .select("id")
+        .eq("email", email)
+        .maybe_single()
+        .execute()
+    )
+    profile = getattr(response, "data", None) or {}
+    return profile.get("id")
+
+
 @app.post("/webhooks/stripe")
 async def stripe_webhook(
     request: Request,
@@ -61,7 +76,13 @@ async def stripe_webhook(
 
     if event_type == "checkout.session.completed":
         metadata = data.get("metadata", {}) or {}
-        user_id = metadata.get("user_id") or data.get("client_reference_id")
+        customer_details = data.get("customer_details", {}) or {}
+        customer_email = data.get("customer_email") or customer_details.get("email")
+        user_id = (
+            metadata.get("user_id")
+            or data.get("client_reference_id")
+            or get_user_id_by_email(customer_email)
+        )
         plan = metadata.get("plan") or ("pro" if data.get("payment_link") else "free")
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")

@@ -33,6 +33,7 @@ class BillingService:
             "line_items": [{"price": price_id, "quantity": 1}],
             "success_url": success_url,
             "cancel_url": cancel_url,
+            "client_reference_id": user_id,
             "allow_promotion_codes": True,
             "saved_payment_method_options": {
                 "payment_method_save": "disabled",
@@ -41,6 +42,12 @@ class BillingService:
             "metadata": {
                 "user_id": user_id,
                 "plan": plan,
+            },
+            "subscription_data": {
+                "metadata": {
+                    "user_id": user_id,
+                    "plan": plan,
+                },
             },
         }
 

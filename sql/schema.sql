@@ -5,6 +5,8 @@ create table if not exists public.user_profiles (
   plan text not null default 'free' check (plan in ('free', 'pro')),
   stripe_customer_id text,
   stripe_subscription_id text,
+  subscription_status text,
+  cancel_at_period_end boolean not null default false,
 
   total_prompts_used integer not null default 0,
   monthly_prompts_used integer not null default 0,
@@ -15,6 +17,12 @@ create table if not exists public.user_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.user_profiles
+  add column if not exists subscription_status text;
+
+alter table if exists public.user_profiles
+  add column if not exists cancel_at_period_end boolean not null default false;
 
 
 
