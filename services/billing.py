@@ -18,6 +18,16 @@ def _stripe_search_value(value: str) -> str:
     return value.replace("\\", "\\\\").replace("'", "\\'")
 
 
+def _stripe_value(obj, key: str, default=None):
+    if obj is None:
+        return default
+
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+
+    return getattr(obj, key, default)
+
+
 class BillingService:
     def __init__(self, stripe_secret_key: str):
         if not stripe_secret_key:
@@ -96,7 +106,9 @@ class BillingService:
 
         listed_customers = stripe.Customer.list(email=email, limit=10)
         for customer in getattr(listed_customers, "data", []) or []:
-            customers_by_id[customer["id"]] = customer
+            customer_id = _stripe_value(customer, "id")
+            if customer_id:
+                customers_by_id[customer_id] = customer
 
         try:
             searched_customers = stripe.Customer.search(
@@ -104,27 +116,33 @@ class BillingService:
                 limit=10,
             )
             for customer in getattr(searched_customers, "data", []) or []:
-                customers_by_id[customer["id"]] = customer
+                customer_id = _stripe_value(customer, "id")
+                if customer_id:
+                    customers_by_id[customer_id] = customer
         except stripe.error.StripeError:
             pass
 
         for customer in customers_by_id.values():
+            customer_id = _stripe_value(customer, "id")
+            if not customer_id:
+                continue
+
             subscriptions = stripe.Subscription.list(
-                customer=customer["id"],
+                customer=customer_id,
                 status="all",
                 limit=100,
             )
 
             for subscription in getattr(subscriptions, "data", []) or []:
-                status = (subscription.get("status") or "").lower()
+                status = (_stripe_value(subscription, "status", "") or "").lower()
                 if status not in ACTIVE_SUBSCRIPTION_STATUSES:
                     continue
 
                 if not active_subscription or (
-                    subscription.get("current_period_end") or 0
-                ) > (active_subscription.get("current_period_end") or 0):
+                    _stripe_value(subscription, "current_period_end", 0) or 0
+                ) > (_stripe_value(active_subscription, "current_period_end", 0) or 0):
                     active_subscription = subscription
-                    active_customer_id = customer["id"]
+                    active_customer_id = customer_id
 
         if not active_subscription:
             return False
@@ -133,17 +151,17 @@ class BillingService:
             {
                 "plan": "pro",
                 "stripe_customer_id": active_customer_id,
-                "stripe_subscription_id": active_subscription.get("id"),
-                "subscription_status": active_subscription.get("status"),
+                "stripe_subscription_id": _stripe_value(active_subscription, "id"),
+                "subscription_status": _stripe_value(active_subscription, "status"),
                 "cancel_at_period_end": bool(
-                    active_subscription.get("cancel_at_period_end", False)
+                    _stripe_value(active_subscription, "cancel_at_period_end", False)
                 ),
                 "monthly_prompt_limit": PRO_MONTHLY_PROMPT_LIMIT,
                 "billing_period_start": _ts_to_date_str(
-                    active_subscription.get("current_period_start")
+                    _stripe_value(active_subscription, "current_period_start")
                 ),
                 "billing_period_end": _ts_to_date_str(
-                    active_subscription.get("current_period_end")
+                    _stripe_value(active_subscription, "current_period_end")
                 ),
             }
         ).eq("id", user_id).execute()
