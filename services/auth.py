@@ -169,14 +169,14 @@ def reset_password_for_email(
     redirect_to: Optional[str] = None,
 ) -> Dict[str, Any]:
     try:
-        try:
-        response = client.auth.reset_password_for_email(
-            email,
-            {
-                "redirect_to": redirect_to
-                or "https://cksrlu3biqpraokzyw4me5.streamlit.app/?mode=reset"
-            },
-        )
+        if redirect_to:
+            response = client.auth.reset_password_for_email(
+                email,
+                {"redirect_to": redirect_to},
+            )
+        else:
+            response = client.auth.reset_password_for_email(email)
+
         return _to_dict(response)
 
     except Exception as e:
