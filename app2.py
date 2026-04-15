@@ -1,14 +1,12 @@
 import os
 
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_cookies_manager_ext import EncryptedCookieManager
 
 from core.cookies_auth import clear_auth_cookies, restore_auth_once, save_auth_cookies
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
-    exchange_code_for_session,
     resend_signup_confirmation,
     reset_password_for_email,
     restore_session_from_tokens,
@@ -29,7 +27,6 @@ from services.usage import (
 )
 from ui.account_view import account_summary_panel
 from ui.auth_view import auth_panel
-from ui.profile_view import profile_panel
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
@@ -97,97 +94,23 @@ prompt_generator = PromptGenerator(settings.openai_api_key)
 billing_service = BillingService(settings.stripe_secret_key)
 
 
-def _forward_auth_hash_to_query_params() -> None:
-    components.html(
-        """
-        <script>
-        const pageLocation = window.parent.location;
-        const hash = pageLocation.hash ? pageLocation.hash.slice(1) : "";
-
-        if (hash) {
-            const hashParams = new URLSearchParams(hash);
-            const authKeys = [
-                "access_token",
-                "refresh_token",
-                "expires_at",
-                "expires_in",
-                "code",
-                "token_hash",
-                "token_type",
-                "type",
-            ];
-            const hasAuthHash = authKeys.some((key) => hashParams.has(key));
-
-            if (hasAuthHash) {
-                const url = new URL(pageLocation.href);
-                authKeys.forEach((key) => {
-                    if (hashParams.has(key)) {
-                        url.searchParams.set(key, hashParams.get(key));
-                    }
-                });
-                url.hash = "";
-                pageLocation.replace(url.toString());
-            }
-        }
-        </script>
-        """,
-        height=0,
-    )
-
-
-def _set_restored_auth(restored: dict, url_type: str | None, url_mode: str) -> None:
-    st.session_state.session = restored.get("session")
-    st.session_state.user = restored.get("user")
-    st.session_state.auth_restored = True
-    st.session_state.show_welcome = url_type != "recovery" and url_mode != "reset"
-
-    save_auth_cookies(cookies, restored)
-
-    if url_type == "recovery" or url_mode == "reset":
-        st.session_state.is_password_recovery = True
-        st.session_state.page = "reset_password"
-    else:
-        st.session_state.is_password_recovery = False
-        st.session_state.page = "app"
-
-
-def _ensure_current_auth_client_session() -> bool:
-    session = st.session_state.get("session") or {}
-    access_token = session.get("access_token") or cookies.get("access_token")
-    refresh_token = session.get("refresh_token") or cookies.get("refresh_token")
-
-    restored = restore_session_from_tokens(
-        supabase_auth,
-        access_token,
-        refresh_token,
-    )
-
-    if not restored:
-        return False
-
-    st.session_state.session = restored.get("session")
-    st.session_state.user = restored.get("user")
-    save_auth_cookies(cookies, restored)
-    return True
-
-
 def handle_auth_from_url() -> None:
-    _forward_auth_hash_to_query_params()
-
     query_params = st.query_params
     url_access_token = query_params.get("access_token")
     url_refresh_token = query_params.get("refresh_token")
     url_type = query_params.get("type")
     url_mode = query_params.get("mode", "")
-    url_code = query_params.get("code")
     token_hash = query_params.get("token_hash")
-    is_recovery_link = url_mode == "reset" or url_type == "recovery" or bool(token_hash)
 
-    if is_recovery_link:
+    if url_mode == "reset":
         st.session_state.is_password_recovery = True
         st.session_state.page = "reset_password"
 
-    if is_recovery_link and token_hash:
+    if (
+        url_mode == "reset"
+        and token_hash
+        and not st.session_state.get("auth_restored", False)
+    ):
         try:
             verify_response = supabase_auth.auth.verify_otp(
                 {
@@ -203,11 +126,13 @@ def handle_auth_from_url() -> None:
             user = verify_response.get("user")
 
             if session and user:
-                _set_restored_auth(
-                    {"session": session, "user": user},
-                    "recovery",
-                    url_mode or "reset",
-                )
+                st.session_state.session = session
+                st.session_state.user = user
+                st.session_state.auth_restored = True
+                st.session_state.is_password_recovery = True
+                st.session_state.page = "reset_password"
+
+                save_auth_cookies(cookies, {"session": session, "user": user})
 
                 st.query_params.clear()
                 st.rerun()
@@ -219,20 +144,6 @@ def handle_auth_from_url() -> None:
             st.error(f"Invalid or expired reset link: {exc}")
             st.stop()
 
-    if url_code:
-        clear_auth_cookies(cookies)
-
-        restored = exchange_code_for_session(supabase_auth, url_code)
-
-        if restored:
-            _set_restored_auth(restored, url_type, url_mode or "reset")
-        elif is_recovery_link:
-            st.error("Invalid or expired reset link.")
-            st.stop()
-
-        st.query_params.clear()
-        st.rerun()
-
     if url_access_token and url_refresh_token:
         clear_auth_cookies(cookies)
 
@@ -243,14 +154,38 @@ def handle_auth_from_url() -> None:
         )
 
         if restored:
-            _set_restored_auth(restored, url_type, url_mode or "reset")
-        elif is_recovery_link:
-            st.error("Invalid or expired reset link.")
-            st.stop()
+            st.session_state.session = restored.get("session")
+            st.session_state.user = restored.get("user")
+            st.session_state.auth_restored = True
+            st.session_state.show_welcome = True
+
+            save_auth_cookies(cookies, restored)
+
+            if url_type == "recovery" or url_mode == "reset":
+                st.session_state.is_password_recovery = True
+                st.session_state.page = "reset_password"
+            else:
+                st.session_state.is_password_recovery = False
+                st.session_state.page = "app"
 
         st.query_params.clear()
         st.rerun()
+#-------------google fix-------------------------
+query_params = st.query_params
 
+access_token = query_params.get("access_token")
+refresh_token = query_params.get("refresh_token")
+
+if access_token and not st.session_state.get("auth_restored", False):
+    try:
+        supabase_auth.auth.set_session(access_token, refresh_token or "")
+
+        # Mark session as restored
+        st.session_state.auth_restored = True
+
+    except Exception as e:
+        st.error(f"Session restore failed: {e}")
+#------------------------------------------------
 
 def reset_password_panel() -> None:
     st.markdown(
@@ -276,12 +211,6 @@ def reset_password_panel() -> None:
                 st.error("Passwords do not match.")
             else:
                 try:
-                    if not _ensure_current_auth_client_session():
-                        st.error(
-                            "Your reset session expired. Please request a new password reset link."
-                        )
-                        return
-
                     supabase_auth.auth.update_user({"password": new_password})
 
                     clear_auth_cookies(cookies)
@@ -355,24 +284,9 @@ def app_panel(user: dict) -> None:
     subscription_panel(profile, user, billing_service, settings)
 
 
-def user_profile_page(user: dict) -> None:
-    if not user or "id" not in user:
-        st.error("User session error. Please log in again.")
-        st.stop()
-
-    ensure_user_profile(
-        supabase_admin,
-        user["id"],
-        user.get("email", ""),
-    )
-
-    profile = get_user_profile(supabase_admin, user["id"])
-    profile_panel(user, profile, supabase_auth, cookies)
-
-
 render_styles()
-handle_auth_from_url()
 restore_auth_once(cookies, supabase_auth)
+handle_auth_from_url()
 
 if (
     st.session_state.get("page") == "reset_password"
@@ -397,9 +311,6 @@ elif not st.session_state.get("user"):
         reset_password_for_email,
         settings,
     )
-
-elif st.session_state.get("page") == "profile":
-    user_profile_page(st.session_state.get("user"))
 
 else:
     app_panel(st.session_state.get("user"))
