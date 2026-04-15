@@ -278,8 +278,9 @@ def auth_panel(
                             clean_email,
                             redirect_to=_with_query_param(
                                 settings.app_base_url,
-                                "reset_password",
-                                "1",
+                                "mode",
+                                 "reset",
+                                )
                             ),
                         )
                         st.success(
