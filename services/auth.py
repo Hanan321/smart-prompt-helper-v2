@@ -110,6 +110,36 @@ def restore_session_from_tokens(
         return None
 
 
+def exchange_code_for_session(
+    client: Client,
+    code: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    if not code:
+        return None
+
+    try:
+        session_response = client.auth.exchange_code_for_session({"auth_code": code})
+        session_response = _to_dict(session_response)
+
+        user_response = client.auth.get_user()
+        user = getattr(user_response, "user", None)
+
+        if user is None and hasattr(user_response, "model_dump"):
+            user = user_response.model_dump().get("user")
+
+        user = _to_dict(user)
+        session = session_response.get("session", session_response)
+
+        if not user:
+            return None
+
+        return {"session": session, "user": user}
+
+    except Exception as e:
+        print("Code exchange error:", e)
+        return None
+
+
 # ----------------------------
 # Email Actions
 # ----------------------------
@@ -152,3 +182,8 @@ def reset_password_for_email(
     except Exception as e:
         print("Password reset error:", e)
         raise
+
+
+def update_user_password(client: Client, password: str) -> Dict[str, Any]:
+    response = client.auth.update_user({"password": password})
+    return _to_dict(response)

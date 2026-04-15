@@ -1,17 +1,20 @@
 import os
 
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_cookies_manager_ext import EncryptedCookieManager
 
 from core.cookies_auth import clear_auth_cookies, restore_auth_once, save_auth_cookies
 from services.auth import (
     create_supabase_admin_client,
     create_supabase_auth_client,
+    exchange_code_for_session,
     resend_signup_confirmation,
     reset_password_for_email,
     restore_session_from_tokens,
     sign_in,
     sign_up,
+    update_user_password,
 )
 from services.billing import BillingService
 from services.config import get_settings, validate_settings
@@ -48,6 +51,8 @@ def init_session_state() -> None:
         "auth_restored": False,
         "show_welcome": True,
         "page": "app",
+        "password_recovery_active": False,
+        "password_reset_complete": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -104,22 +109,34 @@ def build_clients():
 
 def handle_auth_link(supabase_auth, cookies) -> None:
     query_params = st.query_params
+    url_code = query_params.get("code")
     url_access_token = query_params.get("access_token")
     url_refresh_token = query_params.get("refresh_token")
+    link_type = (query_params.get("type") or "").lower()
+    reset_requested = query_params.get("reset_password") == "1"
+    is_password_recovery = reset_requested or link_type == "recovery"
 
-    if not url_access_token or not url_refresh_token:
+    if not url_code and (not url_access_token or not url_refresh_token):
+        if reset_requested:
+            clear_auth_cookies(cookies)
+            st.session_state.session = None
+            st.session_state.user = None
+            st.session_state.page = "reset_password"
         return
 
     clear_auth_cookies(cookies)
 
-    try:
-        restored = restore_session_from_tokens(
-            supabase_auth,
-            url_access_token,
-            url_refresh_token,
-        )
-    except Exception:
-        restored = None
+    if url_code:
+        restored = exchange_code_for_session(supabase_auth, url_code)
+    else:
+        try:
+            restored = restore_session_from_tokens(
+                supabase_auth,
+                url_access_token,
+                url_refresh_token,
+            )
+        except Exception:
+            restored = None
 
     if restored:
         st.session_state.session = restored.get("session")
@@ -127,10 +144,44 @@ def handle_auth_link(supabase_auth, cookies) -> None:
         save_auth_cookies(cookies, restored)
         st.session_state.auth_restored = True
         st.session_state.show_welcome = True
-        st.session_state.page = "app"
+        if is_password_recovery:
+            st.session_state.password_recovery_active = True
+            st.session_state.page = "reset_password"
+        else:
+            st.session_state.page = "app"
 
     st.query_params.clear()
     st.rerun()
+
+
+def sync_supabase_hash_params() -> None:
+    components.html(
+        """
+        <script>
+        const parentLocation = window.parent.location;
+        const hash = parentLocation.hash ? parentLocation.hash.substring(1) : "";
+
+        if (hash.includes("access_token=") || hash.includes("refresh_token=")) {
+            const hashParams = new URLSearchParams(hash);
+            const searchParams = new URLSearchParams(parentLocation.search);
+
+            ["access_token", "refresh_token", "type", "token_type", "expires_in"].forEach((key) => {
+                const value = hashParams.get(key);
+                if (value) {
+                    searchParams.set(key, value);
+                }
+            });
+
+            if (hashParams.get("type") === "recovery") {
+                searchParams.set("reset_password", "1");
+            }
+
+            parentLocation.replace(`${parentLocation.pathname}?${searchParams.toString()}`);
+        }
+        </script>
+        """,
+        height=0,
+    )
 
 
 def app_panel(
@@ -208,6 +259,57 @@ def app_panel(
     subscription_panel(profile, user, billing_service, settings)
 
 
+def reset_password_panel(supabase_auth, cookies) -> None:
+    st.markdown(
+        "<div class='main-title'>🎓 Smart Prompt Helper</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div class='subtitle'>Create a new password for your account.</div>",
+        unsafe_allow_html=True,
+    )
+
+    if st.session_state.password_reset_complete:
+        st.success("Your password has been updated. Please log in with your new password.")
+        if st.button("Go to log in", type="primary", use_container_width=True):
+            st.session_state.password_reset_complete = False
+            st.session_state.page = "app"
+            st.rerun()
+        return
+
+    if not st.session_state.user:
+        st.info("Opening your secure password reset link. If this message stays here, please send yourself a new reset email and open the newest link.")
+        return
+
+    with st.form("update_password_form"):
+        password = st.text_input("New password", type="password")
+        confirm_password = st.text_input("Confirm new password", type="password")
+        submitted = st.form_submit_button("Update password", use_container_width=True)
+
+        if submitted:
+            if not password:
+                st.error("Please enter a new password.")
+            elif len(password) < 8:
+                st.error("Password must be at least 8 characters long.")
+            elif not confirm_password:
+                st.error("Please confirm your new password.")
+            elif password != confirm_password:
+                st.error("Passwords do not match.")
+            else:
+                try:
+                    update_user_password(supabase_auth, password)
+                    clear_auth_cookies(cookies)
+                    st.session_state.session = None
+                    st.session_state.user = None
+                    st.session_state.generated_prompt = ""
+                    st.session_state.password_recovery_active = False
+                    st.session_state.password_reset_complete = True
+                    st.session_state.page = "app"
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Could not update password: {exc}")
+
+
 def main() -> None:
     init_session_state()
     render_styles()
@@ -221,11 +323,16 @@ def main() -> None:
         billing_service,
     ) = build_clients()
 
+    sync_supabase_hash_params()
     handle_auth_link(supabase_auth, cookies)
     restore_auth_once(cookies, supabase_auth)
 
-    if st.session_state.user:
+    if st.session_state.user and st.session_state.page != "reset_password":
         st.session_state.page = "app"
+
+    if st.session_state.page == "reset_password" or st.session_state.password_reset_complete:
+        reset_password_panel(supabase_auth, cookies)
+        return
 
     if not st.session_state.user:
         auth_panel(

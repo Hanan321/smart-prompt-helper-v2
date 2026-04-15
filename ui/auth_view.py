@@ -1,4 +1,21 @@
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 import streamlit as st
+
+
+def _with_query_param(url: str, key: str, value: str) -> str:
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query[key] = value
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            urlencode(query),
+            parts.fragment,
+        )
+    )
 
 
 def auth_panel(
@@ -258,8 +275,12 @@ def auth_panel(
                     try:
                         reset_password_for_email(
                             supabase_auth,
-                            email,
-                            redirect_to=settings.app_base_url,
+                            clean_email,
+                            redirect_to=_with_query_param(
+                                settings.app_base_url,
+                                "reset_password",
+                                "1",
+                            ),
                         )
                         st.success(
                             "Password reset email sent. Please check your inbox."
