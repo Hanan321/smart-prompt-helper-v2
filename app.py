@@ -248,11 +248,17 @@ def app_panel(user: dict) -> None:
 render_styles()
 restore_auth_once(cookies, supabase_auth)
 
-if st.session_state.page == "reset_password" and st.session_state.is_password_recovery:
+render_styles()
+restore_auth_once(cookies, supabase_auth)
+
+if (
+    st.session_state.get("page", "home") == "reset_password"
+    and st.session_state.get("is_password_recovery", False)
+):
     reset_password_panel()
 
-elif not st.session_state.user:
-    if st.session_state.password_reset_done:
+elif not st.session_state.get("user"):
+    if st.session_state.get("password_reset_done", False):
         st.success("Your password was reset. Please log in with your new password.")
         st.session_state.password_reset_done = False
 
@@ -270,4 +276,4 @@ elif not st.session_state.user:
     )
 
 else:
-    app_panel(st.session_state.user)
+    app_panel(st.session_state.get("user"))
