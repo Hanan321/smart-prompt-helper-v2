@@ -1,4 +1,22 @@
+from urllib.parse import urlencode, urlsplit, urlunsplit
+
 import streamlit as st
+
+PRO_PAYMENT_LINK_URL = "https://buy.stripe.com/dRmcN4fHc5aedfsb326oo00"
+
+
+def _payment_link_for_user(user_id: str) -> str:
+    parts = urlsplit(PRO_PAYMENT_LINK_URL)
+    query = urlencode({"client_reference_id": user_id})
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            query,
+            parts.fragment,
+        )
+    )
 
 
 def subscription_panel(profile: dict, user: dict, billing_service, settings) -> None:
@@ -87,32 +105,13 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
                         else:
                             st.caption("This is a test Pro account.")
                     else:
-                        if st.button(
+                        payment_link = _payment_link_for_user(user["id"])
+                        st.link_button(
                             "Upgrade to Pro",
-                            key="upgrade_pro",
+                            payment_link,
                             type="primary",
                             use_container_width=True,
-                        ):
-                            try:
-                                # Temporary checkout identity debug lines.
-                                st.write("Checkout user email:", user.get("email"))
-                                st.write("Checkout user id:", user.get("id"))
-
-                                session = billing_service.create_checkout_session(
-                                    customer_email=None,
-                                    plan="pro",
-                                    success_url=f"{settings.app_base_url}?checkout=success",
-                                    cancel_url=f"{settings.app_base_url}?checkout=cancel",
-                                    price_id=price_id,
-                                    user_id=user["id"],
-                                )
-                                st.link_button(
-                                    "Continue to secure checkout",
-                                    session.url,
-                                    use_container_width=True,
-                                )
-                            except Exception as exc:
-                                st.error(f"Could not create checkout session: {exc}")
+                        )
 
     st.markdown("---")
     st.markdown("**Manage subscription**")

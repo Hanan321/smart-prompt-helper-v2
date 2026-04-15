@@ -29,10 +29,15 @@ class BillingService:
 
         payload = {
             "mode": "subscription",
+            "payment_method_types": ["card"],
             "line_items": [{"price": price_id, "quantity": 1}],
             "success_url": success_url,
             "cancel_url": cancel_url,
             "allow_promotion_codes": True,
+            "saved_payment_method_options": {
+                "payment_method_save": "disabled",
+                "payment_method_remove": "disabled",
+            },
             "metadata": {
                 "user_id": user_id,
                 "plan": plan,

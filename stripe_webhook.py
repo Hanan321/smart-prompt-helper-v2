@@ -61,8 +61,8 @@ async def stripe_webhook(
 
     if event_type == "checkout.session.completed":
         metadata = data.get("metadata", {}) or {}
-        user_id = metadata.get("user_id")
-        plan = metadata.get("plan", "free")
+        user_id = metadata.get("user_id") or data.get("client_reference_id")
+        plan = metadata.get("plan") or ("pro" if data.get("payment_link") else "free")
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
 
