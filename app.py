@@ -170,7 +170,22 @@ def handle_auth_from_url() -> None:
 
         st.query_params.clear()
         st.rerun()
+#-------------google fix-------------------------
+query_params = st.query_params
 
+access_token = query_params.get("access_token")
+refresh_token = query_params.get("refresh_token")
+
+if access_token and not st.session_state.get("auth_restored", False):
+    try:
+        supabase_auth.auth.set_session(access_token, refresh_token or "")
+
+        # Mark session as restored
+        st.session_state.auth_restored = True
+
+    except Exception as e:
+        st.error(f"Session restore failed: {e}")
+#------------------------------------------------
 
 def reset_password_panel() -> None:
     st.markdown(
