@@ -27,6 +27,7 @@ from services.usage import (
 )
 from ui.account_view import account_summary_panel
 from ui.auth_view import auth_panel
+from ui.profile_view import profile_panel
 from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
@@ -284,6 +285,21 @@ def app_panel(user: dict) -> None:
     subscription_panel(profile, user, billing_service, settings)
 
 
+def user_profile_panel(user: dict) -> None:
+    if not user or "id" not in user:
+        st.error("User session error. Please log in again.")
+        st.stop()
+
+    ensure_user_profile(
+        supabase_admin,
+        user["id"],
+        user.get("email", ""),
+    )
+
+    profile = get_user_profile(supabase_admin, user["id"])
+    profile_panel(user, profile, supabase_auth, cookies)
+
+
 render_styles()
 restore_auth_once(cookies, supabase_auth)
 handle_auth_from_url()
@@ -311,6 +327,9 @@ elif not st.session_state.get("user"):
         reset_password_for_email,
         settings,
     )
+
+elif st.session_state.get("page") == "profile":
+    user_profile_panel(st.session_state.get("user"))
 
 else:
     app_panel(st.session_state.get("user"))
