@@ -237,8 +237,6 @@ def handle_auth_from_url() -> None:
             st.stop()
 
     if url_code:
-        clear_auth_cookies(cookies)
-
         restored = exchange_code_for_session(supabase_auth, url_code)
 
         if restored:
@@ -257,8 +255,6 @@ def handle_auth_from_url() -> None:
         st.rerun()
 
     if url_access_token and url_refresh_token:
-        clear_auth_cookies(cookies)
-
         restored = restore_session_from_tokens(
             supabase_auth,
             url_access_token,
