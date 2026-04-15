@@ -4,7 +4,7 @@ from services.auth import extract_tokens, restore_session_from_tokens
 
 
 def restore_auth_once(cookies, supabase_auth) -> None:
-    if st.session_state.auth_restored:
+    if st.session_state.get("auth_restored", False):
         return
 
     access_token = cookies.get("access_token")
@@ -23,13 +23,15 @@ def restore_auth_once(cookies, supabase_auth) -> None:
     st.session_state.auth_restored = True
 
 
-def save_auth_cookies(cookies, auth_response: dict) -> None:
+def save_auth_cookies(cookies, auth_response) -> None:
     access_token, refresh_token = extract_tokens(auth_response)
 
-    if access_token and refresh_token:
+    if access_token:
         cookies["access_token"] = access_token
+    if refresh_token:
         cookies["refresh_token"] = refresh_token
-        cookies.save()
+
+    cookies.save()
 
 
 def clear_auth_cookies(cookies) -> None:
