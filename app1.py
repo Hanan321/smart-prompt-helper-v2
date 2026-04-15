@@ -137,7 +137,7 @@ else:
                 st.success("Your Pro subscription is active. Your account has been updated.")
                 profile = get_user_profile(supabase_admin, user["id"])
         except Exception:
-            st.warning("Could not refresh your billing status automatically. Please use Refresh Pro status in the billing section below.")
+            st.warning("Could not refresh your billing status automatically. Please contact support if your payment was completed.")
 
     display_name = profile.get("username") or user.get("email", "User")
     st.markdown(f"## Welcome, {display_name}")
@@ -148,4 +148,4 @@ else:
     prompt_form_panel(user, supabase_admin, prompt_generator, can_generate_prompt, increment_prompt_count)
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
-    subscription_panel(profile, user, billing_service, settings, supabase_admin)
+    subscription_panel(profile, user, billing_service, settings)

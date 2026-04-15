@@ -350,7 +350,7 @@ def app_panel(user: dict) -> None:
                 st.success("Your Pro subscription is active. Your account has been updated.")
                 profile = get_user_profile(supabase_admin, user["id"])
         except Exception:
-            st.warning("Could not refresh your billing status automatically. Please use Refresh Pro status in the billing section below.")
+            st.warning("Could not refresh your billing status automatically. Please contact support if your payment was completed.")
 
     current_plan = (profile.get("plan") or "free").lower()
     display_name = profile.get("username") or user.get("email", "unknown")
@@ -390,7 +390,7 @@ def app_panel(user: dict) -> None:
 
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
-    subscription_panel(profile, user, billing_service, settings, supabase_admin)
+    subscription_panel(profile, user, billing_service, settings)
 
 
 def user_profile_page(user: dict) -> None:
