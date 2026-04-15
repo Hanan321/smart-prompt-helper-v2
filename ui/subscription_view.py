@@ -94,8 +94,12 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
                             use_container_width=True,
                         ):
                             try:
+                                # Temporary checkout identity debug lines.
+                                st.write("Checkout user email:", user.get("email"))
+                                st.write("Checkout user id:", user.get("id"))
+
                                 session = billing_service.create_checkout_session(
-                                    customer_email=user["email"],
+                                    customer_email=None,
                                     plan="pro",
                                     success_url=f"{settings.app_base_url}?checkout=success",
                                     cancel_url=f"{settings.app_base_url}?checkout=cancel",

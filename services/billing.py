@@ -1,3 +1,5 @@
+from typing import Optional
+
 import stripe
 from supabase import Client
 
@@ -12,7 +14,7 @@ class BillingService:
 
     def create_checkout_session(
         self,
-        customer_email: str,
+        customer_email: Optional[str],
         plan: str,
         success_url: str,
         cancel_url: str,
@@ -25,18 +27,22 @@ class BillingService:
         if not price_id:
             raise ValueError("Missing Stripe price ID for checkout.")
 
-        return stripe.checkout.Session.create(
-            mode="subscription",
-            customer_email=customer_email,
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=success_url,
-            cancel_url=cancel_url,
-            allow_promotion_codes=True,
-            metadata={
+        payload = {
+            "mode": "subscription",
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "allow_promotion_codes": True,
+            "metadata": {
                 "user_id": user_id,
                 "plan": plan,
             },
-        )
+        }
+
+        if customer_email:
+            payload["customer_email"] = customer_email
+
+        return stripe.checkout.Session.create(**payload)
 
     def create_billing_portal_session(
         self,
