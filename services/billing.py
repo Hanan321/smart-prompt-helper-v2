@@ -1,9 +1,17 @@
 from typing import Optional
+from datetime import datetime, timezone
 
 import stripe
 from supabase import Client
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
+ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
+
+
+def _ts_to_date_str(ts: int | None) -> str | None:
+    if not ts:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
 
 
 class BillingService:
@@ -67,6 +75,61 @@ class BillingService:
             customer=customer_id,
             return_url=return_url,
         )
+
+    def sync_active_subscription_by_email(
+        self,
+        admin_client: Client,
+        user_id: str,
+        email: str | None,
+    ) -> bool:
+        if not email:
+            return False
+
+        active_subscription = None
+        active_customer_id = None
+
+        customers = stripe.Customer.list(email=email, limit=10)
+        for customer in getattr(customers, "data", []) or []:
+            subscriptions = stripe.Subscription.list(
+                customer=customer["id"],
+                status="all",
+                limit=100,
+            )
+
+            for subscription in getattr(subscriptions, "data", []) or []:
+                status = (subscription.get("status") or "").lower()
+                if status not in ACTIVE_SUBSCRIPTION_STATUSES:
+                    continue
+
+                if not active_subscription or (
+                    subscription.get("current_period_end") or 0
+                ) > (active_subscription.get("current_period_end") or 0):
+                    active_subscription = subscription
+                    active_customer_id = customer["id"]
+
+        if not active_subscription:
+            return False
+
+        admin_client.table("user_profiles").update(
+            {
+                "plan": "pro",
+                "stripe_customer_id": active_customer_id,
+                "stripe_subscription_id": active_subscription.get("id"),
+                "subscription_status": active_subscription.get("status"),
+                "cancel_at_period_end": bool(
+                    active_subscription.get("cancel_at_period_end", False)
+                ),
+                "monthly_prompt_limit": PRO_MONTHLY_PROMPT_LIMIT,
+                "billing_period_start": _ts_to_date_str(
+                    active_subscription.get("current_period_start")
+                ),
+                "billing_period_end": _ts_to_date_str(
+                    active_subscription.get("current_period_end")
+                ),
+            }
+        ).eq("id", user_id).execute()
+
+        return True
 
 
 def update_plan(admin_client: Client, user_id: str, plan: str) -> None:

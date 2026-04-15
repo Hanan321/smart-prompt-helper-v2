@@ -127,6 +127,18 @@ else:
     # Logic for logged-in user dashboard
     user = st.session_state.user
     profile = get_user_profile(supabase_admin, user["id"])
+    if (profile.get("plan") or "free").lower() != "pro":
+        try:
+            if billing_service.sync_active_subscription_by_email(
+                supabase_admin,
+                user["id"],
+                user.get("email"),
+            ):
+                st.success("Your Pro subscription is active. Your account has been updated.")
+                profile = get_user_profile(supabase_admin, user["id"])
+        except Exception:
+            pass
+
     display_name = profile.get("username") or user.get("email", "User")
     st.markdown(f"## Welcome, {display_name}")
     

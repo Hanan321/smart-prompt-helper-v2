@@ -339,6 +339,19 @@ def app_panel(user: dict) -> None:
     )
 
     profile = get_user_profile(supabase_admin, user["id"])
+
+    if (profile.get("plan") or "free").lower() != "pro":
+        try:
+            if billing_service.sync_active_subscription_by_email(
+                supabase_admin,
+                user["id"],
+                user.get("email"),
+            ):
+                st.success("Your Pro subscription is active. Your account has been updated.")
+                profile = get_user_profile(supabase_admin, user["id"])
+        except Exception:
+            pass
+
     current_plan = (profile.get("plan") or "free").lower()
     display_name = profile.get("username") or user.get("email", "unknown")
 
