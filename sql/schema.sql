@@ -21,6 +21,7 @@ create table if not exists public.user_profiles (
 
 
 
+
 -- 1. Create a function that inserts a row into public.user_profiles
 create or replace function public.handle_new_user()
 returns trigger as $$
