@@ -6,6 +6,7 @@ from supabase import Client, create_client
 # ----------------------------
 # Clients
 # ----------------------------
+
 def create_supabase_auth_client(url: str, anon_key: str) -> Client:
     return create_client(url, anon_key)
 
@@ -17,6 +18,7 @@ def create_supabase_admin_client(url: str, service_key: str) -> Client:
 # ----------------------------
 # Helpers
 # ----------------------------
+
 def _to_dict(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump()
@@ -26,6 +28,7 @@ def _to_dict(value: Any) -> Any:
 # ----------------------------
 # Auth Actions
 # ----------------------------
+
 def sign_up(
     client: Client,
     email: str,
@@ -67,6 +70,7 @@ def sign_out(client: Client) -> None:
 # ----------------------------
 # Token Handling
 # ----------------------------
+
 def extract_tokens(auth_response: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     session = auth_response.get("session") or {}
     access_token = session.get("access_token")
@@ -139,6 +143,7 @@ def exchange_code_for_session(
 # ----------------------------
 # Email Actions
 # ----------------------------
+
 def resend_signup_confirmation(
     client: Client,
     email: str,
@@ -164,6 +169,7 @@ def reset_password_for_email(
     redirect_to: Optional[str] = None,
 ) -> Dict[str, Any]:
     try:
+        try:
         response = client.auth.reset_password_for_email(
             email,
             {
