@@ -184,6 +184,14 @@ def reset_password_for_email(
         raise
 
 
-def update_user_password(client: Client, password: str) -> Dict[str, Any]:
+def update_password(client: Client, password: str) -> Dict[str, Any]:
     response = client.auth.update_user({"password": password})
+    return _to_dict(response)
+
+
+def update_user_password(client: Client, password: str) -> Dict[str, Any]:
+    return update_password(client, password)
+
+def update_password(client: Client, new_password: str) -> Dict[str, Any]:
+    response = client.auth.update_user({"password": new_password})
     return _to_dict(response)
