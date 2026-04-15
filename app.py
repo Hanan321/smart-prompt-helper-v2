@@ -102,46 +102,6 @@ if "password_reset_done" not in st.session_state:
     st.session_state.password_reset_done = False
 
 
-# ----------------------------
-# Handle auth session from email link
-# ----------------------------
-query_params = st.query_params
-url_mode = query_params.get("mode", "")
-url_type = query_params.get("type")
-token_hash = query_params.get("token_hash")
-
-if url_mode == "reset" and token_hash:
-    try:
-        supabase_auth.auth.verify_otp({
-            "type": "recovery",
-            "token_hash": token_hash,
-        })
-
-        st.session_state.is_password_recovery = True
-        st.session_state.page = "reset_password"
-
-    except Exception as e:
-        st.error("Invalid or expired reset link.")
-        st.stop()
-
-    if restored:
-        st.session_state.session = restored.get("session")
-        st.session_state.user = restored.get("user")
-        save_auth_cookies(cookies, restored)
-        st.session_state.auth_restored = True
-        st.session_state.show_welcome = True
-
-        if url_type == "recovery" or url_mode == "reset":
-            st.session_state.is_password_recovery = True
-            st.session_state.page = "reset_password"
-        else:
-            st.session_state.is_password_recovery = False
-            st.session_state.page = "app"
-
-    st.query_params.clear()
-    st.rerun()
-#----------------------------------------------
-
 def reset_password_panel() -> None:
     st.markdown(
         "<div class='main-title'>Reset your password</div>",
@@ -183,6 +143,65 @@ def reset_password_panel() -> None:
                     st.rerun()
                 except Exception as exc:
                     st.error(f"Could not update password: {exc}")
+
+
+# ----------------------------
+# Handle auth session from email link
+# ----------------------------
+query_params = st.query_params
+url_access_token = query_params.get("access_token")
+url_refresh_token = query_params.get("refresh_token")
+url_type = query_params.get("type")
+url_mode = query_params.get("mode", "")
+token_hash = query_params.get("token_hash")
+
+if url_mode == "reset":
+    st.session_state.is_password_recovery = True
+    st.session_state.page = "reset_password"
+
+if url_mode == "reset" and token_hash:
+    try:
+        verify_response = supabase_auth.auth.verify_otp(
+            {
+                "type": "recovery",
+                "token_hash": token_hash,
+            }
+        )
+
+        if verify_response:
+            st.session_state.auth_restored = True
+            st.session_state.is_password_recovery = True
+            st.session_state.page = "reset_password"
+
+    except Exception:
+        st.error("Invalid or expired reset link.")
+        st.stop()
+
+if url_access_token and url_refresh_token:
+    clear_auth_cookies(cookies)
+
+    restored = restore_session_from_tokens(
+        supabase_auth,
+        url_access_token,
+        url_refresh_token,
+    )
+
+    if restored:
+        st.session_state.session = restored.get("session")
+        st.session_state.user = restored.get("user")
+        save_auth_cookies(cookies, restored)
+        st.session_state.auth_restored = True
+        st.session_state.show_welcome = True
+
+        if url_type == "recovery" or url_mode == "reset":
+            st.session_state.is_password_recovery = True
+            st.session_state.page = "reset_password"
+        else:
+            st.session_state.is_password_recovery = False
+            st.session_state.page = "app"
+
+    st.query_params.clear()
+    st.rerun()
 
 
 def app_panel(user: dict) -> None:
