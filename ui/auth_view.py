@@ -1,21 +1,4 @@
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
-
 import streamlit as st
-
-
-def _with_query_param(url: str, key: str, value: str) -> str:
-    parts = urlsplit(url)
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    query[key] = value
-    return urlunsplit(
-        (
-            parts.scheme,
-            parts.netloc,
-            parts.path,
-            urlencode(query),
-            parts.fragment,
-        )
-    )
 
 
 def auth_panel(
@@ -27,7 +10,7 @@ def auth_panel(
     sign_in,
     sign_up,
     resend_signup_confirmation,
-    reset_password_for_email,
+    send_sign_in_link,
     settings,
 ) -> None:
     st.markdown(
@@ -74,8 +57,8 @@ def auth_panel(
         else:
             st.info(message)
 
-    login_tab, signup_tab, reset_tab = st.tabs(
-        ["Log In", "Create Account", "Forgot Password"]
+    login_tab, signup_tab, magic_link_tab = st.tabs(
+        ["Log In", "Create Account", "Email Me a Sign-In Link"]
     )
 
     with login_tab:
@@ -257,46 +240,41 @@ def auth_panel(
                         else:
                             st.error(f"Sign up failed: {exc}")
 
-    with reset_tab:
-        with st.form("forgot_password_form"):
-            reset_email = st.text_input("Email", key="reset_email")
-            reset_submitted = st.form_submit_button(
-                "Send password reset email",
+    with magic_link_tab:
+        st.info("Use this option only if you already have an account.")
+
+        with st.form("magic_link_form"):
+            magic_link_email = st.text_input("Email", key="magic_link_email")
+            magic_link_submitted = st.form_submit_button(
+                "Send sign-in link",
                 use_container_width=True,
             )
 
-            if reset_submitted:
-                clean_email = reset_email.strip().lower()
+            if magic_link_submitted:
+                clean_email = magic_link_email.strip().lower()
 
                 if not clean_email:
                     st.error("Please enter your email address.")
                 else:
                     try:
-                        reset_password_for_email(
+                        send_sign_in_link(
                             supabase_auth,
-                            clean_email,
-                            redirect_to=_with_query_param(
-                                settings.app_base_url,
-                                "mode",
-                                "reset",
-                            ),
+                            email=clean_email,
+                            email_redirect_to=settings.app_base_url,
                         )
                         st.success(
-                            "Password reset email sent. Please check your inbox."
-                        )
-                        st.info(
-                            "Open the link from the email on the same live app URL used in APP_BASE_URL."
+                            "Sign-in link sent. Please check your inbox."
                         )
                     except Exception as exc:
                         error_msg = str(exc).lower()
 
-                        if "error sending recovery email" in error_msg:
+                        if "over_email_send_rate_limit" in error_msg:
                             st.error(
-                                "Supabase could not send the recovery email. Check that APP_BASE_URL is your live app URL and that the same URL is added in Supabase Authentication redirect settings."
+                                "Too many sign-in emails were requested recently. Please wait a little and try again."
                             )
-                        elif "over_email_send_rate_limit" in error_msg:
+                        elif "user not found" in error_msg:
                             st.error(
-                                "Too many reset emails were requested recently. Please wait a little and try again."
+                                "We could not find an existing account with that email address."
                             )
                         else:
-                            st.error(f"Could not send reset email: {exc}")
+                            st.error(f"Could not send sign-in link: {exc}")
