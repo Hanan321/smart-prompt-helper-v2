@@ -42,14 +42,19 @@ st.set_page_config(
 )
 
 def init_session_state() -> None:
+    # Ensure these keys exist and don't get reset on rerun
+    if "page" not in st.session_state:
+        st.session_state.page = "home"
+    if "is_password_recovery" not in st.session_state:
+        st.session_state.is_password_recovery = False
+    
     defaults = {
         "generated_prompt": "",
         "session": None,
         "user": None,
         "auth_restored": False,
-        "page": "home",
-        "is_password_recovery": False,
         "password_reset_done": False,
+        "client_synced": False
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -74,126 +79,106 @@ supabase_admin = create_supabase_admin_client(settings.supabase_url, settings.su
 prompt_generator = PromptGenerator(settings.openai_api_key)
 billing_service = BillingService(settings.stripe_secret_key)
 
-# --- CRITICAL FIX: Session Synchronization ---
+# --- Session Management ---
 def sync_session_to_client():
-    """
-    Ensures the Supabase client actually has the session stored in session_state.
-    Without this, the client 'forgets' the user on every button click.
-    """
-    if st.session_state.session and not st.session_state.get("client_synced", False):
+    """Forces the Supabase client to use the session from Streamlit state."""
+    if st.session_state.session:
         try:
-            # We tell the client: 'Use this specific session'
-            access_token = st.session_state.session.get("access_token")
-            refresh_token = st.session_state.session.get("refresh_token")
+            # Check if session is a dict or an object
+            sess = st.session_state.session
+            access_token = sess.get("access_token") if isinstance(sess, dict) else sess.access_token
+            refresh_token = sess.get("refresh_token") if isinstance(sess, dict) else sess.refresh_token
+            
             if access_token and refresh_token:
                 supabase_auth.auth.set_session(access_token, refresh_token)
-                st.session_state.client_synced = True
-        except:
-            pass
-
-# --- Local UI Components ---
-
-def reset_password_panel(supabase_client):
-    st.markdown("<div class='main-title'>🔒 Reset Your Password</div>", unsafe_allow_html=True)
-    st.write("Please enter your new password below.")
-
-    with st.form("reset_password_form", clear_on_submit=True):
-        new_pw = st.text_input("New Password", type="password")
-        confirm_pw = st.text_input("Confirm New Password", type="password")
-        submit = st.form_submit_button("Update Password", type="primary", use_container_width=True)
-
-        if submit:
-            if not new_pw or len(new_pw) < 6:
-                st.error("Password must be at least 6 characters.")
-            elif new_pw != confirm_pw:
-                st.error("Passwords do not match.")
-            else:
-                try:
-                    # Sync one last time before calling update
-                    sync_session_to_client()
-                    
-                    supabase_client.auth.update_user({"password": new_pw})
-                    
-                    st.session_state.is_password_recovery = False
-                    st.session_state.password_reset_done = True
-                    st.session_state.page = "login"
-                    st.session_state.session = None # Clear session after reset
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Could not update password: {e}")
+        except Exception as e:
+            st.error(f"Sync error: {e}")
 
 def handle_auth_from_url() -> None:
     params = st.query_params
     
-    # Check for modern PKCE 'code'
+    # 1. Handle the PKCE 'code' from email
     if "code" in params:
         try:
             auth_res = supabase_auth.auth.exchange_code_for_session({"auth_code": params["code"]})
             
-            # We must convert the response to a dictionary for session_state
-            if hasattr(auth_res, "model_dump"):
-                auth_data = auth_res.model_dump()
-            else:
-                auth_data = {"session": auth_res.session, "user": auth_res.user}
-
-            st.session_state.session = auth_data.get("session")
-            st.session_state.user = auth_data.get("user")
-            st.session_state.page = "reset_password"
+            # Lock the state before the rerun
+            st.session_state.session = auth_res.session
+            st.session_state.user = auth_res.user
             st.session_state.is_password_recovery = True
-            st.session_state.client_synced = False # Force a sync on next run
+            st.session_state.page = "reset_password"
             
             save_auth_cookies(cookies, auth_res)
             st.query_params.clear()
-            st.rerun()
+            st.rerun() # This triggers a fresh run where page='reset_password'
         except Exception as e:
             st.error(f"Recovery link failed: {e}")
+
+# --- UI Components ---
+def reset_password_panel():
+    st.markdown("<div class='main-title'>🔒 Reset Your Password</div>", unsafe_allow_html=True)
+    st.info("You are currently in a secure recovery session.")
+
+    with st.form("reset_password_form"):
+        new_pw = st.text_input("New Password", type="password", help="Minimum 6 characters")
+        confirm_pw = st.text_input("Confirm New Password", type="password")
+        submit = st.form_submit_button("Update Password", type="primary", use_container_width=True)
+
+        if submit:
+            if len(new_pw) < 6:
+                st.error("Password is too short.")
+            elif new_pw != confirm_pw:
+                st.error("Passwords do not match.")
+            else:
+                try:
+                    # Final sync to ensure the client is authorized
+                    sync_session_to_client()
+                    supabase_auth.auth.update_user({"password": new_pw})
+                    
+                    # Success! Clean up state
+                    st.session_state.is_password_recovery = False
+                    st.session_state.password_reset_done = True
+                    st.session_state.page = "login"
+                    st.session_state.session = None
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Update failed: {e}")
 
 def main_app_panel() -> None:
     user = st.session_state.user
     if not user: return
-    
     profile = get_user_profile(supabase_admin, user["id"])
     if not profile:
         st.error("User profile not found.")
         return
-
+    
     display_name = profile.get("username") or user.get("email", "User")
-    current_plan = (profile.get("plan") or "free").lower()
-    total_used = get_total_prompt_count(profile)
-    monthly_used = get_monthly_prompt_count(profile)
-    monthly_limit = get_monthly_prompt_limit(profile)
-
     st.markdown("<div class='main-title'>🎓 Smart Prompt Helper</div>", unsafe_allow_html=True)
-    st.markdown("<div class='subtitle'>Generate high-quality academic and professional prompts.</div>", unsafe_allow_html=True)
-
-    account_summary_panel(
-        display_name, user, current_plan, total_used, monthly_used, monthly_limit,
-        supabase_auth, cookies, clear_auth_cookies
-    )
-
+    account_summary_panel(display_name, user, (profile.get("plan") or "free").lower(), 
+                          get_total_prompt_count(profile), get_monthly_prompt_count(profile), 
+                          get_monthly_prompt_limit(profile), supabase_auth, cookies, clear_auth_cookies)
     prompt_form_panel(user, supabase_admin, prompt_generator, can_generate_prompt, increment_prompt_count)
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
     subscription_panel(profile, user, billing_service, settings)
 
-# --- Main App Execution ---
+# --- EXECUTION FLOW ---
 render_styles()
 restore_auth_once(cookies, supabase_auth)
-handle_auth_from_url()
-sync_session_to_client() # ALWAYS sync before checking routing
+handle_auth_from_url() # This must run before routing
+sync_session_to_client() # This must run to keep the 'update' permission
 
-# Routing Logic
-if st.session_state.get("page") == "reset_password" or st.session_state.get("is_password_recovery"):
-    reset_password_panel(supabase_auth)
+# 1. Check recovery state FIRST
+if st.session_state.is_password_recovery or st.session_state.page == "reset_password":
+    reset_password_panel()
 
-elif not st.session_state.get("user"):
-    if st.session_state.get("password_reset_done", False):
-        st.success("Your password was reset. Please log in with your new credentials.")
+# 2. Otherwise handle normal auth/app
+elif not st.session_state.user:
+    if st.session_state.get("password_reset_done"):
+        st.success("Password updated! Please log in.")
         st.session_state.password_reset_done = False
-
-    auth_panel(
-        supabase_auth, supabase_admin, cookies, save_auth_cookies, ensure_user_profile,
-        sign_in, sign_up, resend_signup_confirmation, reset_password_for_email, settings
-    )
+    
+    auth_panel(supabase_auth, supabase_admin, cookies, save_auth_cookies, ensure_user_profile,
+               sign_in, sign_up, resend_signup_confirmation, reset_password_for_email, settings)
 else:
     main_app_panel()
