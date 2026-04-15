@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      const streamlitMessage = (type, data = {}) => {
+        window.parent.postMessage(
+          {
+            isStreamlitMessage: true,
+            type,
+            ...data,
+          },
+          "*"
+        );
+      };
+
+      const readParentHash = () => {
+        try {
+          const pageWindow = window.parent || window.top || window;
+          const pageLocation = pageWindow.location;
+          const hash = pageLocation.hash || "";
+
+          if (hash) {
+            try {
+              pageWindow.history.replaceState(
+                null,
+                pageWindow.document.title,
+                pageLocation.pathname + pageLocation.search
+              );
+            } catch (_) {
+              // The Python side can still consume the hash even if cleanup is blocked.
+            }
+          }
+
+          return hash;
+        } catch (error) {
+          return "";
+        }
+      };
+
+      const sendHash = () => {
+        streamlitMessage("streamlit:setComponentValue", {
+          value: readParentHash(),
+        });
+      };
+
+      streamlitMessage("streamlit:componentReady", { apiVersion: 1 });
+      streamlitMessage("streamlit:setFrameHeight", { height: 0 });
+      sendHash();
+      window.addEventListener("hashchange", sendHash);
+    </script>
+  </head>
+  <body></body>
+</html>

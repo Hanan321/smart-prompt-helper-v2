@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional, Tuple
 
-from supabase import Client, create_client
+from supabase import Client, ClientOptions, create_client
 
 
 # ----------------------------
@@ -8,7 +8,11 @@ from supabase import Client, create_client
 # ----------------------------
 
 def create_supabase_auth_client(url: str, anon_key: str) -> Client:
-    return create_client(url, anon_key)
+    return create_client(
+        url,
+        anon_key,
+        options=ClientOptions(flow_type="implicit"),
+    )
 
 
 def create_supabase_admin_client(url: str, service_key: str) -> Client:
@@ -57,6 +61,25 @@ def sign_in(client: Client, email: str, password: str) -> Dict[str, Any]:
     response = client.auth.sign_in_with_password(
         {"email": email, "password": password}
     )
+    return _to_dict(response)
+
+
+def send_sign_in_link(
+    client: Client,
+    email: str,
+    email_redirect_to: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "email": email,
+        "options": {
+            "should_create_user": False,
+        },
+    }
+
+    if email_redirect_to:
+        payload["options"]["email_redirect_to"] = email_redirect_to
+
+    response = client.auth.sign_in_with_otp(payload)
     return _to_dict(response)
 
 
@@ -161,26 +184,6 @@ def resend_signup_confirmation(
 
     response = client.auth.resend(payload)
     return _to_dict(response)
-
-
-def reset_password_for_email(
-    client: Client,
-    email: str,
-    redirect_to: Optional[str] = None,
-) -> Dict[str, Any]:
-    try:
-        response = client.auth.reset_password_for_email(
-            email,
-            {
-                "redirect_to": redirect_to
-                or "https://cksrlu3biqpraokzyw4me5.streamlit.app/?mode=reset"
-            },
-        )
-        return _to_dict(response)
-
-    except Exception as e:
-        print("Password reset error:", e)
-        raise
 
 
 def update_password(client: Client, password: str) -> Dict[str, Any]:

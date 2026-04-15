@@ -5,6 +5,8 @@ create table if not exists public.user_profiles (
   plan text not null default 'free' check (plan in ('free', 'pro')),
   stripe_customer_id text,
   stripe_subscription_id text,
+  subscription_status text,
+  cancel_at_period_end boolean not null default false,
 
   total_prompts_used integer not null default 0,
   monthly_prompts_used integer not null default 0,
@@ -17,6 +19,9 @@ create table if not exists public.user_profiles (
 );
 
 
+alter table public.user_profiles
+  add column if not exists subscription_status text,
+  add column if not exists cancel_at_period_end boolean not null default false;
 
 
 
@@ -38,6 +43,8 @@ end;
 $$ language plpgsql security definer;
 
 -- 2. Create the trigger that calls the function after every signup
+drop trigger if exists on_auth_user_created on auth.users;
+
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();

@@ -12,6 +12,8 @@ def ensure_user_profile(
     email: str,
     username: str | None = None,
 ) -> None:
+    profile_username = username or (email.split("@", 1)[0] if email else "User")
+
     existing = (
         admin_client.table("user_profiles")
         .select("id")
@@ -27,7 +29,7 @@ def ensure_user_profile(
         {
             "id": user_id,
             "email": email,
-            "username": username,
+            "username": profile_username,
             "plan": "free",
             "subscription_status": None,
             "cancel_at_period_end": False,
@@ -155,4 +157,3 @@ def increment_prompt_count(admin_client: Client, user_id: str) -> None:
     admin_client.table("user_profiles").update(
         {"monthly_prompts_used": current_monthly + 1}
     ).eq("id", user_id).execute()
-    

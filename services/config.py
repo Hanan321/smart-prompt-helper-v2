@@ -37,7 +37,7 @@ def _from_env(key: str, default: str = "") -> str:
 
 
 def _from_env_int(key: str, default: int) -> int:
-    value = os.getenv(key)
+    value = _from_env(key)
     if not value:
         return default
     return int(value)
