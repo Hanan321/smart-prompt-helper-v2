@@ -14,6 +14,10 @@ def _ts_to_date_str(ts: int | None) -> str | None:
     return datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
 
 
+def _stripe_search_value(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
 class BillingService:
     def __init__(self, stripe_secret_key: str):
         if not stripe_secret_key:
@@ -88,8 +92,23 @@ class BillingService:
         active_subscription = None
         active_customer_id = None
 
-        customers = stripe.Customer.list(email=email, limit=10)
-        for customer in getattr(customers, "data", []) or []:
+        customers_by_id = {}
+
+        listed_customers = stripe.Customer.list(email=email, limit=10)
+        for customer in getattr(listed_customers, "data", []) or []:
+            customers_by_id[customer["id"]] = customer
+
+        try:
+            searched_customers = stripe.Customer.search(
+                query=f"email:'{_stripe_search_value(email)}'",
+                limit=10,
+            )
+            for customer in getattr(searched_customers, "data", []) or []:
+                customers_by_id[customer["id"]] = customer
+        except stripe.error.StripeError:
+            pass
+
+        for customer in customers_by_id.values():
             subscriptions = stripe.Subscription.list(
                 customer=customer["id"],
                 status="all",

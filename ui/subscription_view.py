@@ -1,7 +1,13 @@
 import streamlit as st
 
 
-def subscription_panel(profile: dict, user: dict, billing_service, settings) -> None:
+def subscription_panel(
+    profile: dict,
+    user: dict,
+    billing_service,
+    settings,
+    supabase_admin=None,
+) -> None:
     current_plan = (profile.get("plan") or "free").lower()
     customer_id = profile.get("stripe_customer_id")
     subscription_id = profile.get("stripe_subscription_id")
@@ -52,6 +58,23 @@ def subscription_panel(profile: dict, user: dict, billing_service, settings) -> 
             )
     else:
         st.info("You are currently on the Free plan. Upgrade anytime for more monthly prompts.")
+        if supabase_admin is not None:
+            if st.button("Refresh Pro status", use_container_width=True):
+                try:
+                    updated = billing_service.sync_active_subscription_by_email(
+                        supabase_admin,
+                        user["id"],
+                        user.get("email"),
+                    )
+                    if updated:
+                        st.success("Your Pro subscription was found and your account has been updated. Please refresh the page.")
+                    else:
+                        st.warning(
+                            "No active Stripe subscription was found for this account email. "
+                            "Check that the live Stripe payment used the same email and the app is using the same live Stripe secret key."
+                        )
+                except Exception as exc:
+                    st.error(f"Could not refresh Pro status: {exc}")
 
     plans = [
         ("Free Trial", "$0", "5 prompts total to test the app", None),
