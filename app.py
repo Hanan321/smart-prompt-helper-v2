@@ -106,23 +106,23 @@ if "password_reset_done" not in st.session_state:
 # Handle auth session from email link
 # ----------------------------
 query_params = st.query_params
-url_access_token = query_params.get("access_token")
-url_refresh_token = query_params.get("refresh_token")
-url_type = query_params.get("type")
 url_mode = query_params.get("mode", "")
+url_type = query_params.get("type")
+token_hash = query_params.get("token_hash")
 
-if url_mode == "reset":
-    st.session_state.is_password_recovery = True
-    st.session_state.page = "reset_password"
+if url_mode == "reset" and token_hash:
+    try:
+        supabase_auth.auth.verify_otp({
+            "type": "recovery",
+            "token_hash": token_hash,
+        })
 
-if url_access_token and url_refresh_token:
-    clear_auth_cookies(cookies)
+        st.session_state.is_password_recovery = True
+        st.session_state.page = "reset_password"
 
-    restored = restore_session_from_tokens(
-        supabase_auth,
-        url_access_token,
-        url_refresh_token,
-    )
+    except Exception as e:
+        st.error("Invalid or expired reset link.")
+        st.stop()
 
     if restored:
         st.session_state.session = restored.get("session")
