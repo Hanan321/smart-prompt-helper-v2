@@ -28,6 +28,10 @@ def _stripe_value(obj, key: str, default=None):
     return getattr(obj, key, default)
 
 
+def _plan_from_subscription_status(status: str | None) -> str:
+    return "pro" if (status or "").lower() in ACTIVE_SUBSCRIPTION_STATUSES else "free"
+
+
 class BillingService:
     def __init__(self, stripe_secret_key: str):
         if not stripe_secret_key:
@@ -89,6 +93,45 @@ class BillingService:
             customer=customer_id,
             return_url=return_url,
         )
+
+    def cancel_subscription_at_period_end(
+        self,
+        admin_client: Client,
+        user_id: str,
+        subscription_id: str,
+    ) -> dict:
+        if not subscription_id:
+            raise ValueError("Missing Stripe subscription ID.")
+
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        if not bool(_stripe_value(subscription, "cancel_at_period_end", False)):
+            subscription = stripe.Subscription.modify(
+                subscription_id,
+                cancel_at_period_end=True,
+            )
+
+        status = _stripe_value(subscription, "status")
+        plan = _plan_from_subscription_status(status)
+        update_data = {
+            "plan": plan,
+            "stripe_subscription_id": _stripe_value(subscription, "id"),
+            "subscription_status": status,
+            "cancel_at_period_end": bool(
+                _stripe_value(subscription, "cancel_at_period_end", False)
+            ),
+            "monthly_prompt_limit": PRO_MONTHLY_PROMPT_LIMIT if plan == "pro" else 0,
+            "billing_period_start": _ts_to_date_str(
+                _stripe_value(subscription, "current_period_start")
+            ),
+            "billing_period_end": _ts_to_date_str(
+                _stripe_value(subscription, "current_period_end")
+            ),
+        }
+
+        admin_client.table("user_profiles").update(update_data).eq(
+            "id", user_id
+        ).execute()
+        return update_data
 
     def sync_active_subscription_by_email(
         self,

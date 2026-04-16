@@ -22,6 +22,7 @@ from services.config import get_settings, validate_settings
 from services.prompt_service import PromptGenerator
 from services.usage import (
     can_generate_prompt,
+    downgrade_if_scheduled_subscription_ended,
     ensure_user_profile,
     get_monthly_prompt_count,
     get_monthly_prompt_limit,
@@ -339,6 +340,11 @@ def app_panel(user: dict) -> None:
     )
 
     profile = get_user_profile(supabase_admin, user["id"])
+    profile = downgrade_if_scheduled_subscription_ended(
+        supabase_admin,
+        user["id"],
+        profile,
+    )
 
     if (profile.get("plan") or "free").lower() != "pro":
         try:
@@ -405,7 +411,19 @@ def user_profile_page(user: dict) -> None:
     )
 
     profile = get_user_profile(supabase_admin, user["id"])
-    profile_panel(user, profile, supabase_auth, cookies)
+    profile = downgrade_if_scheduled_subscription_ended(
+        supabase_admin,
+        user["id"],
+        profile,
+    )
+    profile_panel(
+        user,
+        profile,
+        supabase_auth,
+        cookies,
+        billing_service,
+        supabase_admin,
+    )
 
 
 render_styles()

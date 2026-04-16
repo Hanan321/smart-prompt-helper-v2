@@ -84,8 +84,39 @@ def billing_period_expired(profile: dict) -> bool:
     return date.today() > end_date
 
 
+def scheduled_subscription_period_ended(profile: dict) -> bool:
+    plan = (profile.get("plan") or "free").lower()
+    if plan != "pro" or not bool(profile.get("cancel_at_period_end", False)):
+        return False
+    return billing_period_expired(profile)
+
+
+def downgrade_if_scheduled_subscription_ended(
+    admin_client: Client,
+    user_id: str,
+    profile: dict | None = None,
+) -> dict:
+    current_profile = profile or get_user_profile(admin_client, user_id)
+    if not current_profile or not scheduled_subscription_period_ended(current_profile):
+        return current_profile or {}
+
+    admin_client.table("user_profiles").update(
+        {
+            "plan": "free",
+            "subscription_status": "canceled",
+            "cancel_at_period_end": False,
+            "monthly_prompts_used": 0,
+            "monthly_prompt_limit": 0,
+            "billing_period_start": None,
+            "billing_period_end": None,
+        }
+    ).eq("id", user_id).execute()
+
+    return get_user_profile(admin_client, user_id)
+
+
 def reset_monthly_usage_if_needed(admin_client: Client, user_id: str) -> None:
-    profile = get_user_profile(admin_client, user_id)
+    profile = downgrade_if_scheduled_subscription_ended(admin_client, user_id)
     if not profile:
         return
 
@@ -110,7 +141,7 @@ def reset_monthly_usage_if_needed(admin_client: Client, user_id: str) -> None:
 
 
 def can_generate_prompt(admin_client: Client, user_id: str) -> tuple[bool, str]:
-    profile = get_user_profile(admin_client, user_id)
+    profile = downgrade_if_scheduled_subscription_ended(admin_client, user_id)
     if not profile:
         return False, "User profile not found."
 
@@ -135,7 +166,7 @@ def can_generate_prompt(admin_client: Client, user_id: str) -> tuple[bool, str]:
 
 
 def increment_prompt_count(admin_client: Client, user_id: str) -> None:
-    profile = get_user_profile(admin_client, user_id)
+    profile = downgrade_if_scheduled_subscription_ended(admin_client, user_id)
     if not profile:
         return
 
@@ -155,4 +186,3 @@ def increment_prompt_count(admin_client: Client, user_id: str) -> None:
     admin_client.table("user_profiles").update(
         {"monthly_prompts_used": current_monthly + 1}
     ).eq("id", user_id).execute()
-    

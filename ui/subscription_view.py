@@ -121,22 +121,8 @@ def subscription_panel(
     if current_plan == "pro":
         if is_real_stripe_subscription:
             st.caption(
-                "To cancel your subscription, update your payment method, or view invoices, use the Stripe billing portal below."
+                "Subscription changes are available from your user profile."
             )
-
-            if st.button("Open billing portal", type="primary", use_container_width=True):
-                try:
-                    portal = billing_service.create_billing_portal_session(
-                        customer_id,
-                        settings.app_base_url,
-                    )
-                    st.link_button(
-                        "Continue to Stripe billing portal",
-                        portal.url,
-                        use_container_width=True,
-                    )
-                except Exception as exc:
-                    st.error(f"Could not open billing portal: {exc}")
         else:
             st.caption(
                 "This is a manual test Pro account. No Stripe billing tools are attached to it."
