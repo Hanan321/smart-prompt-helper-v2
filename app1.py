@@ -71,7 +71,7 @@ active_stripe_secret_key = getattr(
     "stripe_secret_key",
     settings.stripe_secret_key,
 )
-billing_service = BillingService(active_stripe_secret_key)
+billing_service = BillingService(active_stripe_secret_key, settings.app_env)
 
 # --- Authentication Logic ---
 

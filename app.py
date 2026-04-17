@@ -105,7 +105,7 @@ active_stripe_secret_key = getattr(
     "stripe_secret_key",
     settings.stripe_secret_key,
 )
-billing_service = BillingService(active_stripe_secret_key)
+billing_service = BillingService(active_stripe_secret_key, settings.app_env)
 auth_hash_reader = components.declare_component(
     "auth_hash_reader",
     path=str(Path(__file__).parent / "components" / "auth_hash_reader"),

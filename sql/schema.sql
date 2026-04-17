@@ -24,6 +24,23 @@ alter table if exists public.user_profiles
 alter table if exists public.user_profiles
   add column if not exists cancel_at_period_end boolean not null default false;
 
+create table if not exists public.user_billing (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  environment text not null check (environment in ('test', 'live')),
+  plan text not null default 'free' check (plan in ('free', 'pro')),
+  subscription_status text,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  cancel_at_period_end boolean not null default false,
+  current_period_end date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, environment)
+);
+
+create unique index if not exists user_billing_user_environment_idx
+  on public.user_billing (user_id, environment);
+
 
 
 

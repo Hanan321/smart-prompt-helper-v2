@@ -1,9 +1,18 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from supabase import Client
 
+from services.billing import PRO_MONTHLY_PROMPT_LIMIT, get_user_billing, update_user_billing
+from services.config import get_config_value
+
 FREE_TOTAL_PROMPT_LIMIT = 5
-PRO_MONTHLY_PROMPT_LIMIT = 200
+
+
+def _active_billing_environment(environment: str | None = None) -> str:
+    normalized = (
+        environment or get_config_value("APP_ENV", "live") or "live"
+    ).strip().lower()
+    return normalized if normalized in {"test", "live"} else "live"
 
 
 def ensure_user_profile(
@@ -28,32 +37,48 @@ def ensure_user_profile(
             "id": user_id,
             "email": email,
             "username": username,
-            "plan": "free",
-            "subscription_status": None,
-            "cancel_at_period_end": False,
             "total_prompts_used": 0,
             "monthly_prompts_used": 0,
-            "monthly_prompt_limit": 0,
-            "billing_period_start": None,
-            "billing_period_end": None,
         }
     ).execute()
 
 
-def get_user_profile(admin_client: Client, user_id: str) -> dict:
+def get_user_profile(
+    admin_client: Client,
+    user_id: str,
+    environment: str | None = None,
+) -> dict:
     response = (
         admin_client.table("user_profiles")
-        .select(
-            "id,email,username,plan,stripe_customer_id,stripe_subscription_id,"
-            "subscription_status,cancel_at_period_end,"
-            "total_prompts_used,monthly_prompts_used,monthly_prompt_limit,"
-            "billing_period_start,billing_period_end"
-        )
+        .select("id,email,username,total_prompts_used,monthly_prompts_used")
         .eq("id", user_id)
         .maybe_single()
         .execute()
     )
-    return getattr(response, "data", None) or {}
+    profile = getattr(response, "data", None) or {}
+    if not profile:
+        return {}
+
+    billing = get_user_billing(
+        admin_client,
+        user_id,
+        _active_billing_environment(environment),
+    )
+    plan = (billing.get("plan") or "free").lower()
+    profile.update(
+        {
+            "plan": plan,
+            "stripe_customer_id": billing.get("stripe_customer_id"),
+            "stripe_subscription_id": billing.get("stripe_subscription_id"),
+            "subscription_status": billing.get("subscription_status"),
+            "cancel_at_period_end": bool(billing.get("cancel_at_period_end", False)),
+            "billing_period_start": None,
+            "billing_period_end": billing.get("current_period_end"),
+            "current_period_end": billing.get("current_period_end"),
+            "monthly_prompt_limit": PRO_MONTHLY_PROMPT_LIMIT if plan == "pro" else 0,
+        }
+    )
+    return profile
 
 
 def get_total_prompt_count(admin_client: Client, user_id: str) -> int:
@@ -100,17 +125,21 @@ def downgrade_if_scheduled_subscription_ended(
     if not current_profile or not scheduled_subscription_period_ended(current_profile):
         return current_profile or {}
 
-    admin_client.table("user_profiles").update(
+    update_user_billing(
+        admin_client,
+        user_id,
+        _active_billing_environment(),
         {
             "plan": "free",
             "subscription_status": "canceled",
             "cancel_at_period_end": False,
-            "monthly_prompts_used": 0,
-            "monthly_prompt_limit": 0,
-            "billing_period_start": None,
-            "billing_period_end": None,
+            "stripe_subscription_id": None,
+            "current_period_end": None,
         }
-    ).eq("id", user_id).execute()
+    )
+    admin_client.table("user_profiles").update({"monthly_prompts_used": 0}).eq(
+        "id", user_id
+    ).execute()
 
     return get_user_profile(admin_client, user_id)
 
@@ -127,15 +156,9 @@ def reset_monthly_usage_if_needed(admin_client: Client, user_id: str) -> None:
     if not billing_period_expired(profile):
         return
 
-    today = date.today()
-    next_end = today + timedelta(days=30)
-
     admin_client.table("user_profiles").update(
         {
             "monthly_prompts_used": 0,
-            "monthly_prompt_limit": PRO_MONTHLY_PROMPT_LIMIT,
-            "billing_period_start": str(today),
-            "billing_period_end": str(next_end),
         }
     ).eq("id", user_id).execute()
 

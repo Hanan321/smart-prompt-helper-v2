@@ -74,6 +74,21 @@ def _absolute_url(value: str) -> str:
     return f"https://{clean}"
 
 
+def get_app_base_url(app_env: str) -> str:
+    suffix = app_env.upper() if app_env in VALID_APP_ENVS else "LIVE"
+    app_base_url = get_config_value(
+        f"APP_BASE_URL_{suffix}",
+        get_config_value("APP_BASE_URL", "http://localhost:8501"),
+    )
+    absolute_app_base_url = _absolute_url(app_base_url).rstrip("/")
+    logger.info(
+        "Active app base URL for APP_ENV='%s': %s",
+        app_env,
+        absolute_app_base_url,
+    )
+    return absolute_app_base_url
+
+
 def get_billing_config() -> BillingConfig:
     app_env = (get_config_value("APP_ENV", "live") or "live").strip().lower()
 
@@ -199,7 +214,7 @@ def get_settings() -> Settings:
         billing_config=billing_config,
         app_env=billing_config.app_env,
 
-        app_base_url=get_config_value("APP_BASE_URL", "http://localhost:8501"),
+        app_base_url=get_app_base_url(billing_config.app_env),
         home_url=_absolute_url(get_config_value("HOME_URL", "https://yourdomain.com")),
 
         cookies_password=get_config_value("COOKIES_PASSWORD"),  # ✅ NEW
