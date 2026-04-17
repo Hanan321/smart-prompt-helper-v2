@@ -153,4 +153,4 @@ else:
     prompt_form_panel(user, supabase_admin, prompt_generator, can_generate_prompt, increment_prompt_count)
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
-    subscription_panel(profile, user, billing_service, settings)
+    subscription_panel(profile, user, billing_service, supabase_admin, settings)

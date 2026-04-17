@@ -5,6 +5,7 @@ def subscription_panel(
     profile: dict,
     user: dict,
     billing_service,
+    admin_client,
     settings,
 ) -> None:
     current_plan = (profile.get("plan") or "free").lower()
@@ -109,6 +110,8 @@ def subscription_panel(
                                     cancel_url=settings.app_base_url,
                                     price_id=price_id,
                                     user_id=user["id"],
+                                    admin_client=admin_client,
+                                    stripe_customer_id=customer_id,
                                 )
                                 st.link_button(
                                     "Continue to secure checkout",

@@ -403,7 +403,7 @@ def app_panel(user: dict) -> None:
 
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
-    subscription_panel(profile, user, billing_service, settings)
+    subscription_panel(profile, user, billing_service, supabase_admin, settings)
 
 
 def user_profile_page(user: dict) -> None:

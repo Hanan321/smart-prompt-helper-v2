@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -6,6 +7,7 @@ from supabase import Client
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
+logger = logging.getLogger(__name__)
 
 
 def _ts_to_date_str(ts: int | None) -> str | None:
@@ -28,6 +30,14 @@ def _stripe_value(obj, key: str, default=None):
     return getattr(obj, key, default)
 
 
+def _safe_id(value: str | None) -> str:
+    if not value:
+        return "missing"
+    if len(value) <= 8:
+        return value
+    return f"...{value[-6:]}"
+
+
 def _plan_from_subscription_status(status: str | None) -> str:
     return "pro" if (status or "").lower() in ACTIVE_SUBSCRIPTION_STATUSES else "free"
 
@@ -38,6 +48,65 @@ class BillingService:
             raise ValueError("Missing Stripe secret key.")
         stripe.api_key = stripe_secret_key
 
+    def ensure_customer_for_user(
+        self,
+        admin_client: Client,
+        user_id: str,
+        email: str | None,
+        existing_customer_id: Optional[str] = None,
+    ) -> str:
+        if existing_customer_id:
+            logger.info(
+                "Using existing Stripe customer for checkout: user_id=%s customer_id=%s",
+                user_id,
+                _safe_id(existing_customer_id),
+            )
+            return existing_customer_id
+
+        profile = (
+            admin_client.table("user_profiles")
+            .select("stripe_customer_id,email")
+            .eq("id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        profile_data = getattr(profile, "data", None) or {}
+        saved_customer_id = profile_data.get("stripe_customer_id")
+        if saved_customer_id:
+            logger.info(
+                "Found persisted Stripe customer before checkout: user_id=%s customer_id=%s",
+                user_id,
+                _safe_id(saved_customer_id),
+            )
+            return saved_customer_id
+
+        customer_email = email or profile_data.get("email")
+        if not customer_email:
+            raise ValueError("Missing user email for Stripe customer creation.")
+
+        logger.info("Creating Stripe customer before checkout: user_id=%s", user_id)
+        customer = stripe.Customer.create(
+            email=customer_email,
+            metadata={
+                "user_id": user_id,
+                "app_user_id": user_id,
+                "source": "smart_prompt_helper",
+            },
+        )
+        customer_id = _stripe_value(customer, "id")
+        if not customer_id:
+            raise ValueError("Stripe customer creation did not return an ID.")
+
+        admin_client.table("user_profiles").update(
+            {"stripe_customer_id": customer_id}
+        ).eq("id", user_id).execute()
+        logger.info(
+            "Saved Stripe customer before checkout: user_id=%s customer_id=%s",
+            user_id,
+            _safe_id(customer_id),
+        )
+        return customer_id
+
     def create_checkout_session(
         self,
         customer_email: Optional[str],
@@ -46,6 +115,8 @@ class BillingService:
         cancel_url: str,
         price_id: str,
         user_id: str,
+        admin_client: Client,
+        stripe_customer_id: Optional[str] = None,
     ) -> stripe.checkout.Session:
         if plan != "pro":
             raise ValueError(f"Unsupported plan: {plan}")
@@ -53,12 +124,20 @@ class BillingService:
         if not price_id:
             raise ValueError("Missing Stripe price ID for checkout.")
 
+        customer_id = self.ensure_customer_for_user(
+            admin_client=admin_client,
+            user_id=user_id,
+            email=customer_email,
+            existing_customer_id=stripe_customer_id,
+        )
+
         payload = {
             "mode": "subscription",
             "payment_method_types": ["card"],
             "line_items": [{"price": price_id, "quantity": 1}],
             "success_url": success_url,
             "cancel_url": cancel_url,
+            "customer": customer_id,
             "client_reference_id": user_id,
             "allow_promotion_codes": True,
             "saved_payment_method_options": {
@@ -77,9 +156,12 @@ class BillingService:
             },
         }
 
-        if customer_email:
-            payload["customer_email"] = customer_email
-
+        logger.info(
+            "Creating Stripe Checkout session: user_id=%s customer_id=%s plan=%s",
+            user_id,
+            _safe_id(customer_id),
+            plan,
+        )
         return stripe.checkout.Session.create(**payload)
 
     def create_billing_portal_session(
