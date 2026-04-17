@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from supabase import create_client
 from services.config import (
+    VALID_APP_ENVS,
     get_billing_config,
     get_config_int,
     get_config_value,
@@ -16,26 +17,36 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+def explicit_app_env() -> str:
+    return (get_config_value("APP_ENV", "") or "").strip().lower()
+
+
 def active_secret_name(base_name: str, app_env: str) -> str:
     return f"{base_name}_{app_env.upper()}"
 
 
 def validate_webhook_config(config) -> list[str]:
-    if config.app_env not in {"test", "live"}:
+    app_env = explicit_app_env()
+    if not app_env:
+        return ["APP_ENV must be set explicitly to either 'test' or 'live'."]
+
+    if app_env not in VALID_APP_ENVS:
         return ["APP_ENV must be either 'test' or 'live'."]
+
+    if config.app_env != app_env:
+        return ["Active billing environment does not match APP_ENV."]
+
+    if config.using_legacy_live_names:
+        return [
+            "Webhook configuration must use environment-specific Stripe secrets; "
+            "set STRIPE_SECRET_KEY_LIVE and STRIPE_WEBHOOK_SECRET_LIVE."
+        ]
 
     missing = []
     if not config.stripe_secret_key:
         missing.append(active_secret_name("STRIPE_SECRET_KEY", config.app_env))
     if not config.stripe_webhook_secret:
         missing.append(active_secret_name("STRIPE_WEBHOOK_SECRET", config.app_env))
-
-    if config.using_legacy_live_names:
-        legacy_names = {
-            "STRIPE_SECRET_KEY_LIVE": "STRIPE_SECRET_KEY",
-            "STRIPE_WEBHOOK_SECRET_LIVE": "STRIPE_WEBHOOK_SECRET",
-        }
-        missing = [f"{key} or legacy {legacy_names[key]}" for key in missing]
 
     errors = [
         f"Missing required webhook configuration for {config.app_env}: {key}"
@@ -59,12 +70,24 @@ def validate_webhook_config(config) -> list[str]:
     return errors
 
 
+def validate_supabase_webhook_config() -> list[str]:
+    required = {
+        "SUPABASE_URL": get_config_value("SUPABASE_URL", ""),
+        "SUPABASE_SERVICE_ROLE_KEY": get_config_value("SUPABASE_SERVICE_ROLE_KEY", ""),
+    }
+    return [
+        f"Missing required webhook configuration: {key}"
+        for key, value in required.items()
+        if not value
+    ]
+
+
 billing_config = get_billing_config()
 billing_config_errors = validate_webhook_config(billing_config)
-if billing_config_errors:
-    raise RuntimeError(
-        "Invalid billing configuration: " + "; ".join(billing_config_errors)
-    )
+supabase_config_errors = validate_supabase_webhook_config()
+config_errors = billing_config_errors + supabase_config_errors
+if config_errors:
+    raise RuntimeError("Invalid webhook configuration: " + "; ".join(config_errors))
 
 logger.info("Stripe webhook billing environment: %s", billing_config.app_env)
 
@@ -72,9 +95,11 @@ stripe.api_key = billing_config.stripe_secret_key
 webhook_secret = billing_config.stripe_webhook_secret
 expected_livemode = billing_config.app_env == "live"
 
+supabase_url = get_config_value("SUPABASE_URL", "")
+supabase_service_role_key = get_config_value("SUPABASE_SERVICE_ROLE_KEY", "")
 supabase = create_client(
-    get_config_value("SUPABASE_URL", ""),
-    get_config_value("SUPABASE_SERVICE_ROLE_KEY", ""),
+    supabase_url,
+    supabase_service_role_key,
 )
 
 PRO_MONTHLY_PROMPT_LIMIT = get_config_int("PRO_MONTHLY_PROMPT_LIMIT", 200)
@@ -267,12 +292,20 @@ def retrieve_subscription(subscription_id: str):
 @app.post("/webhooks/stripe")
 async def stripe_webhook(
     request: Request,
-    stripe_signature: str = Header(alias="Stripe-Signature"),
+    stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
 ):
     payload = await request.body()
 
+    if not stripe_signature:
+        logger.warning("Stripe webhook rejected missing signature header.")
+        raise HTTPException(status_code=400, detail="Missing Stripe signature.")
+
     try:
-        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+        event = stripe.Webhook.construct_event(
+            payload,
+            stripe_signature,
+            webhook_secret,
+        )
     except ValueError as exc:
         logger.warning("Stripe webhook rejected invalid payload.")
         raise HTTPException(status_code=400, detail=f"Invalid payload: {exc}") from exc
@@ -401,7 +434,10 @@ async def stripe_webhook(
             subscription_fields(subscription),
         )
 
-    elif event_type in {"customer.subscription.created", "customer.subscription.updated"}:
+    elif event_type in {
+        "customer.subscription.created",
+        "customer.subscription.updated",
+    }:
         subscription_id = data.get("id")
 
         if not subscription_id:
