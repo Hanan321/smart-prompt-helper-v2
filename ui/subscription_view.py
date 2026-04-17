@@ -64,7 +64,11 @@ def subscription_panel(
             "Pro",
             "$20/month",
             "Up to 200 prompts per month for academic and research workflows",
-            settings.billing_config.stripe_price_pro,
+            getattr(
+                getattr(settings, "billing_config", None),
+                "stripe_price_pro",
+                settings.stripe_price_pro,
+            ),
         ),
     ]
 

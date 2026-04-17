@@ -65,7 +65,13 @@ if not cookies.ready():
 supabase_auth = create_supabase_auth_client(settings.supabase_url, settings.supabase_anon_key)
 supabase_admin = create_supabase_admin_client(settings.supabase_url, settings.supabase_service_role_key)
 prompt_generator = PromptGenerator(settings.openai_api_key)
-billing_service = BillingService(settings.billing_config.stripe_secret_key)
+billing_config = getattr(settings, "billing_config", None)
+active_stripe_secret_key = getattr(
+    billing_config,
+    "stripe_secret_key",
+    settings.stripe_secret_key,
+)
+billing_service = BillingService(active_stripe_secret_key)
 
 # --- Authentication Logic ---
 

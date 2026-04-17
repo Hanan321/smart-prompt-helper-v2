@@ -99,7 +99,13 @@ supabase_admin = create_supabase_admin_client(
     settings.supabase_service_role_key,
 )
 prompt_generator = PromptGenerator(settings.openai_api_key)
-billing_service = BillingService(settings.billing_config.stripe_secret_key)
+billing_config = getattr(settings, "billing_config", None)
+active_stripe_secret_key = getattr(
+    billing_config,
+    "stripe_secret_key",
+    settings.stripe_secret_key,
+)
+billing_service = BillingService(active_stripe_secret_key)
 auth_hash_reader = components.declare_component(
     "auth_hash_reader",
     path=str(Path(__file__).parent / "components" / "auth_hash_reader"),

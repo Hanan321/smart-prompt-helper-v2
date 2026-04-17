@@ -223,5 +223,7 @@ def validate_settings(settings: Settings) -> list[str]:
 
     missing = [key for key, value in required.items() if not value]
     errors = [f"Missing required secret: {key}" for key in missing]
-    errors.extend(validate_billing_config(settings.billing_config))
+    billing_config = getattr(settings, "billing_config", None)
+    if billing_config:
+        errors.extend(validate_billing_config(billing_config))
     return errors
