@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from urllib.parse import parse_qsl
 
@@ -68,11 +67,13 @@ def init_session_state() -> None:
 settings = get_settings()
 missing_settings = validate_settings(settings)
 if missing_settings:
-    st.error(f"Missing environment variables: {', '.join(missing_settings)}")
+    st.error("Configuration error:")
+    for missing_setting in missing_settings:
+        st.error(missing_setting)
     st.stop()
 
 
-cookie_password = os.getenv("COOKIES_PASSWORD", "") or settings.cookies_password
+cookie_password = settings.cookies_password
 if not cookie_password:
     st.error("Missing COOKIES_PASSWORD environment variable.")
     st.stop()
@@ -98,7 +99,7 @@ supabase_admin = create_supabase_admin_client(
     settings.supabase_service_role_key,
 )
 prompt_generator = PromptGenerator(settings.openai_api_key)
-billing_service = BillingService(settings.stripe_secret_key)
+billing_service = BillingService(settings.billing_config.stripe_secret_key)
 auth_hash_reader = components.declare_component(
     "auth_hash_reader",
     path=str(Path(__file__).parent / "components" / "auth_hash_reader"),
