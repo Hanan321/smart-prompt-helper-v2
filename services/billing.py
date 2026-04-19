@@ -330,6 +330,7 @@ class BillingService:
             {
                 "prompt_pack_checkout": "success",
                 "checkout_session_id": "{CHECKOUT_SESSION_ID}",
+                "session_id": "{CHECKOUT_SESSION_ID}",
             },
         )
         cancel_url_with_context = _url_with_query(

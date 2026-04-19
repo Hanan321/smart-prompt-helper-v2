@@ -1,4 +1,47 @@
+import logging
+from urllib.parse import urlsplit, urlunsplit
+
 import streamlit as st
+
+logger = logging.getLogger(__name__)
+
+
+def _base_url_from_current_request() -> str:
+    try:
+        context_url = getattr(st.context, "url", None)
+        if context_url:
+            parts = urlsplit(context_url)
+            if parts.scheme and parts.netloc:
+                return urlunsplit((parts.scheme, parts.netloc, "", "", "")).rstrip("/")
+
+        headers = getattr(st.context, "headers", None)
+        host = headers.get("x-forwarded-host") if headers else None
+        host = host or (headers.get("host") if headers else None)
+        proto = headers.get("x-forwarded-proto") if headers else None
+        proto = proto or "https"
+        if host:
+            return f"{proto}://{host}".rstrip("/")
+    except Exception:
+        logger.info("Could not derive app base URL from current Streamlit request.")
+
+    return ""
+
+
+def _checkout_base_url(settings) -> str:
+    configured_base_url = getattr(settings, "app_base_url", "").rstrip("/")
+    if getattr(settings, "app_env", "live") != "test":
+        return configured_base_url
+
+    current_base_url = _base_url_from_current_request()
+    active_base_url = current_base_url or configured_base_url
+    logger.info(
+        "Prompt pack checkout base URL resolved: env=%s configured=%s current=%s active=%s",
+        getattr(settings, "app_env", "unknown"),
+        configured_base_url,
+        current_base_url or "unavailable",
+        active_base_url,
+    )
+    return active_base_url
 
 
 def subscription_panel(
@@ -151,10 +194,11 @@ def subscription_panel(
                         use_container_width=True,
                     ):
                         try:
+                            checkout_base_url = _checkout_base_url(settings)
                             checkout_session = billing_service.create_prompt_pack_checkout_session(
                                 customer_email=user.get("email"),
-                                success_url=settings.app_base_url,
-                                cancel_url=settings.app_base_url,
+                                success_url=checkout_base_url,
+                                cancel_url=checkout_base_url,
                                 price_id=price_id,
                                 user_id=user["id"],
                                 admin_client=admin_client,

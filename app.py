@@ -369,8 +369,16 @@ def app_panel(user: dict) -> None:
             st.warning("Could not refresh your billing status automatically. Please contact support if your payment was completed.")
 
     if settings.app_env == "test":
-        checkout_session_id = st.query_params.get("checkout_session_id")
+        checkout_session_id = st.query_params.get("checkout_session_id") or st.query_params.get(
+            "session_id"
+        )
         prompt_pack_checkout = st.query_params.get("prompt_pack_checkout")
+        logger.info(
+            "Prompt pack sync check: env=%s active_base_url=%s has_checkout_return=%s",
+            settings.app_env,
+            settings.app_base_url,
+            bool(prompt_pack_checkout),
+        )
         if prompt_pack_checkout:
             safe_checkout_session_id = (
                 f"...{checkout_session_id[-6:]}" if checkout_session_id else "missing"
