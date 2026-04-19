@@ -372,6 +372,7 @@ def app_panel(user: dict) -> None:
     monthly_used = get_monthly_prompt_count(supabase_admin, user["id"])
     monthly_limit = get_monthly_prompt_limit(supabase_admin, user["id"])
     credit_balance = int(profile.get("credit_balance", 0) or 0)
+    total_credits_purchased = int(profile.get("total_credits_purchased", 0) or 0)
     free_prompt_limit = int(
         profile.get(
             "free_prompt_limit",
@@ -402,6 +403,7 @@ def app_panel(user: dict) -> None:
         clear_auth_cookies,
         credit_balance,
         free_prompt_limit,
+        total_credits_purchased,
     )
 
     prompt_form_panel(

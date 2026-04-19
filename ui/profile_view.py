@@ -53,6 +53,8 @@ def profile_panel(
     subscription_status = (profile.get("subscription_status") or "").lower()
     cancel_at_period_end = bool(profile.get("cancel_at_period_end", False))
     billing_period_end = profile.get("billing_period_end")
+    credit_balance = int(profile.get("credit_balance", 0) or 0)
+    total_credits_purchased = int(profile.get("total_credits_purchased", 0) or 0)
 
     if st.button("Back to app", type="primary"):
         st.session_state.page = "app"
@@ -79,6 +81,11 @@ def profile_panel(
             f"<span class='plan-chip'>Plan: {current_plan}</span>",
             unsafe_allow_html=True,
         )
+        st.write(f"One-time credits: **{credit_balance} prompts available**")
+        if total_credits_purchased > 0:
+            st.caption(
+                f"Prompt-pack credits never expire. Total purchased: {total_credits_purchased} prompts."
+            )
 
     st.markdown("<div class='section-title'>Password</div>", unsafe_allow_html=True)
 

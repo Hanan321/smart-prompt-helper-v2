@@ -17,6 +17,7 @@ def subscription_panel(
     monthly_used = int(profile.get("monthly_prompts_used", 0) or 0)
     monthly_limit = int(profile.get("monthly_prompt_limit", 0) or 0)
     credit_balance = int(profile.get("credit_balance", 0) or 0)
+    total_credits_purchased = int(profile.get("total_credits_purchased", 0) or 0)
     app_env = getattr(settings, "app_env", "live")
     is_test_mode = app_env == "test"
     free_prompt_limit = int(
@@ -35,6 +36,12 @@ def subscription_panel(
         f"<span class='plan-chip'>Current plan: {current_plan.title()}</span>",
         unsafe_allow_html=True,
     )
+    if is_test_mode:
+        st.caption(
+            f"One-time credits: {credit_balance} prompts available. These credits never expire."
+        )
+        if total_credits_purchased > 0:
+            st.caption(f"Total one-time credits purchased: {total_credits_purchased} prompts.")
 
     if current_plan == "pro":
         if monthly_limit > 0:
@@ -135,7 +142,9 @@ def subscription_panel(
                 if kind == "free":
                     st.caption(f"Includes {free_prompt_limit} total prompts to test the app.")
                 elif kind == "pack":
-                    st.caption(f"Purchased credits available: {credit_balance}")
+                    st.caption(
+                        f"One-time credits available: {credit_balance}. They never expire."
+                    )
                     if st.button(
                         "Buy 10 prompts",
                         type="secondary",
