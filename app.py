@@ -371,6 +371,17 @@ def app_panel(user: dict) -> None:
     if settings.app_env == "test":
         checkout_session_id = st.query_params.get("checkout_session_id")
         prompt_pack_checkout = st.query_params.get("prompt_pack_checkout")
+        if prompt_pack_checkout:
+            safe_checkout_session_id = (
+                f"...{checkout_session_id[-6:]}" if checkout_session_id else "missing"
+            )
+            logger.info(
+                "Prompt pack checkout return detected: user_id=%s env=%s status=%s session_id=%s",
+                user["id"],
+                settings.app_env,
+                prompt_pack_checkout,
+                safe_checkout_session_id,
+            )
         had_prompt_pack_credits = (
             int(profile.get("credit_balance", 0) or 0) > 0
             or int(profile.get("total_credits_purchased", 0) or 0) > 0
@@ -384,15 +395,11 @@ def app_panel(user: dict) -> None:
                     checkout_session_id,
                 )
 
-            sync_key = f"prompt_pack_sync_checked_{user['id']}"
-            synced_from_history = 0
-            if not st.session_state.get(sync_key):
-                synced_from_history = billing_service.sync_completed_prompt_pack_purchases(
-                    supabase_admin,
-                    user["id"],
-                    profile.get("stripe_customer_id"),
-                )
-                st.session_state[sync_key] = True
+            synced_from_history = billing_service.sync_completed_prompt_pack_purchases(
+                supabase_admin,
+                user["id"],
+                profile.get("stripe_customer_id"),
+            )
 
             profile = get_user_profile(supabase_admin, user["id"])
             has_prompt_pack_credits = (

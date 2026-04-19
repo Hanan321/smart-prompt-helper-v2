@@ -46,12 +46,17 @@ def _url_with_query(url: str, params: dict[str, str]) -> str:
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query.update(params)
+    encoded_query = urlencode(query)
+    encoded_query = encoded_query.replace(
+        "%7BCHECKOUT_SESSION_ID%7D",
+        "{CHECKOUT_SESSION_ID}",
+    )
     return urlunsplit(
         (
             parts.scheme,
             parts.netloc,
             parts.path,
-            urlencode(query),
+            encoded_query,
             parts.fragment,
         )
     )
@@ -349,13 +354,21 @@ class BillingService:
         }
 
         logger.info(
-            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s",
+            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s success_url=%s",
             user_id,
             _safe_id(customer_id),
             PROMPT_PACK_CREDITS,
             self.app_env,
+            success_url_with_session,
         )
-        return stripe.checkout.Session.create(**payload)
+        checkout_session = stripe.checkout.Session.create(**payload)
+        logger.info(
+            "Created Stripe prompt pack checkout: user_id=%s env=%s session_id=%s",
+            user_id,
+            self.app_env,
+            _safe_id(_stripe_value(checkout_session, "id")),
+        )
+        return checkout_session
 
     def _is_paid_prompt_pack_session(self, checkout_session, user_id: str) -> bool:
         metadata = _stripe_value(checkout_session, "metadata", {}) or {}
@@ -386,11 +399,12 @@ class BillingService:
         ).execute()
         granted = bool(getattr(response, "data", False))
         logger.info(
-            "Prompt pack credit sync %s: user_id=%s env=%s session_id=%s",
-            "granted" if granted else "already processed",
+            "Prompt pack credit sync RPC returned %s: user_id=%s env=%s session_id=%s status=%s",
+            granted,
             user_id,
             self.app_env,
             _safe_id(checkout_session_id),
+            "granted" if granted else "already processed",
         )
         return granted
 
@@ -403,6 +417,12 @@ class BillingService:
         if self.app_env != "test" or not checkout_session_id:
             return False
 
+        logger.info(
+            "Syncing returned prompt pack checkout session: user_id=%s env=%s session_id=%s",
+            user_id,
+            self.app_env,
+            _safe_id(checkout_session_id),
+        )
         checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
         if not self._is_paid_prompt_pack_session(checkout_session, user_id):
             logger.info(
@@ -435,9 +455,11 @@ class BillingService:
             limit=100,
         )
         grants = 0
+        paid_pack_sessions = 0
         for checkout_session in getattr(sessions, "data", []) or []:
             if not self._is_paid_prompt_pack_session(checkout_session, user_id):
                 continue
+            paid_pack_sessions += 1
             session_id = _stripe_value(checkout_session, "id")
             if not session_id:
                 continue
@@ -449,13 +471,13 @@ class BillingService:
             ):
                 grants += 1
 
-        if grants:
-            logger.info(
-                "Synced completed prompt pack purchases: user_id=%s env=%s grants=%s",
-                user_id,
-                self.app_env,
-                grants,
-            )
+        logger.info(
+            "Synced completed prompt pack purchases: user_id=%s env=%s paid_sessions=%s new_grants=%s",
+            user_id,
+            self.app_env,
+            paid_pack_sessions,
+            grants,
+        )
         return grants
 
     def create_billing_portal_session(
