@@ -8,11 +8,7 @@ from supabase import Client
 PRO_MONTHLY_PROMPT_LIMIT = 200
 PROMPT_PACK_CREDITS = 10
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
-BILLING_SELECT = (
-    "user_id,environment,plan,subscription_status,stripe_customer_id,"
-    "stripe_subscription_id,cancel_at_period_end,current_period_end,"
-    "credit_balance,total_credits_purchased,monthly_prompts_used"
-)
+BILLING_SELECT = "*"
 logger = logging.getLogger(__name__)
 
 
@@ -102,9 +98,6 @@ def get_user_billing(
         "subscription_status": None,
         "cancel_at_period_end": False,
         "current_period_end": None,
-        "credit_balance": 0,
-        "total_credits_purchased": 0,
-        "monthly_prompts_used": 0,
     }
     try:
         admin_client.table("user_billing").insert(initial_row).execute()

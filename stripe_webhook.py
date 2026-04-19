@@ -101,11 +101,7 @@ supabase = create_client(
     supabase_service_role_key,
 )
 
-BILLING_SELECT = (
-    "user_id,environment,plan,subscription_status,stripe_customer_id,"
-    "stripe_subscription_id,cancel_at_period_end,current_period_end,"
-    "credit_balance,total_credits_purchased,monthly_prompts_used"
-)
+BILLING_SELECT = "*"
 
 PROMPT_PACK_PURCHASE_TYPE = "prompt_pack_10"
 PROMPT_PACK_CREDITS = 10
@@ -180,9 +176,6 @@ def get_billing_by_user_id(user_id: str | None, create_if_missing: bool = True) 
         "subscription_status": None,
         "cancel_at_period_end": False,
         "current_period_end": None,
-        "credit_balance": 0,
-        "total_credits_purchased": 0,
-        "monthly_prompts_used": 0,
     }
     try:
         supabase.table("user_billing").insert(initial_row).execute()
@@ -237,7 +230,12 @@ def reset_monthly_usage(user_id: str | None) -> None:
         return
 
     try:
-        if billing_config.app_env == "test":
+        billing = get_billing_by_user_id(user_id, create_if_missing=False)
+        if (
+            billing_config.app_env == "test"
+            and billing
+            and "monthly_prompts_used" in billing
+        ):
             supabase.table("user_billing").update({"monthly_prompts_used": 0}).eq(
                 "user_id", user_id
             ).eq("environment", billing_config.app_env).execute()

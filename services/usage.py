@@ -48,6 +48,10 @@ def _has_active_monthly_subscription(profile: dict) -> bool:
     )
 
 
+def _billing_has_monthly_usage(profile: dict) -> bool:
+    return bool(profile.get("_billing_has_monthly_prompts_used", False))
+
+
 def ensure_user_profile(
     admin_client: Client,
     user_id: str,
@@ -119,9 +123,11 @@ def get_user_profile(
             "monthly_prompts_used": (
                 billing_monthly_used
                 if active_environment == "test"
+                and "monthly_prompts_used" in billing
                 else profile_monthly_used
             ),
             "free_prompt_limit": _free_prompt_limit(active_environment),
+            "_billing_has_monthly_prompts_used": "monthly_prompts_used" in billing,
         }
     )
     return profile
@@ -183,7 +189,7 @@ def downgrade_if_scheduled_subscription_ended(
             "current_period_end": None,
         }
     )
-    if _is_test_environment():
+    if _is_test_environment() and _billing_has_monthly_usage(current_profile):
         update_user_billing(
             admin_client,
             user_id,
@@ -210,7 +216,7 @@ def reset_monthly_usage_if_needed(admin_client: Client, user_id: str) -> None:
     if not billing_period_expired(profile):
         return
 
-    if _is_test_environment():
+    if _is_test_environment() and _billing_has_monthly_usage(profile):
         update_user_billing(
             admin_client,
             user_id,
@@ -281,12 +287,17 @@ def increment_prompt_count(admin_client: Client, user_id: str) -> None:
             reset_monthly_usage_if_needed(admin_client, user_id)
             refreshed_profile = get_user_profile(admin_client, user_id)
             current_monthly = int(refreshed_profile.get("monthly_prompts_used", 0) or 0)
-            update_user_billing(
-                admin_client,
-                user_id,
-                _active_billing_environment(),
-                {"monthly_prompts_used": current_monthly + 1},
-            )
+            if _billing_has_monthly_usage(refreshed_profile):
+                update_user_billing(
+                    admin_client,
+                    user_id,
+                    _active_billing_environment(),
+                    {"monthly_prompts_used": current_monthly + 1},
+                )
+            else:
+                admin_client.table("user_profiles").update(
+                    {"monthly_prompts_used": current_monthly + 1}
+                ).eq("id", user_id).execute()
             logger.info(
                 "Recorded monthly prompt usage: user_id=%s env=%s used=%s",
                 user_id,
