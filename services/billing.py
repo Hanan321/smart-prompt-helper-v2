@@ -6,10 +6,12 @@ import stripe
 from supabase import Client
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
+PROMPT_PACK_CREDITS = 10
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
 BILLING_SELECT = (
     "user_id,environment,plan,subscription_status,stripe_customer_id,"
-    "stripe_subscription_id,cancel_at_period_end,current_period_end"
+    "stripe_subscription_id,cancel_at_period_end,current_period_end,"
+    "credit_balance,total_credits_purchased,monthly_prompts_used"
 )
 logger = logging.getLogger(__name__)
 
@@ -100,6 +102,9 @@ def get_user_billing(
         "subscription_status": None,
         "cancel_at_period_end": False,
         "current_period_end": None,
+        "credit_balance": 0,
+        "total_credits_purchased": 0,
+        "monthly_prompts_used": 0,
     }
     try:
         admin_client.table("user_billing").insert(initial_row).execute()
@@ -279,6 +284,54 @@ class BillingService:
             plan,
             success_url,
             cancel_url,
+        )
+        return stripe.checkout.Session.create(**payload)
+
+    def create_prompt_pack_checkout_session(
+        self,
+        customer_email: Optional[str],
+        success_url: str,
+        cancel_url: str,
+        price_id: str,
+        user_id: str,
+        admin_client: Client,
+        stripe_customer_id: Optional[str] = None,
+    ) -> stripe.checkout.Session:
+        if self.app_env != "test":
+            raise ValueError("Prompt pack checkout is only enabled in test mode.")
+
+        if not price_id:
+            raise ValueError("Missing Stripe price ID for prompt pack checkout.")
+
+        customer_id = self.ensure_customer_for_user(
+            admin_client=admin_client,
+            user_id=user_id,
+            email=customer_email,
+            existing_customer_id=stripe_customer_id,
+        )
+
+        payload = {
+            "mode": "payment",
+            "payment_method_types": ["card"],
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "customer": customer_id,
+            "client_reference_id": user_id,
+            "metadata": {
+                "user_id": user_id,
+                "purchase_type": "prompt_pack_10",
+                "credits": str(PROMPT_PACK_CREDITS),
+                "environment": self.app_env,
+            },
+        }
+
+        logger.info(
+            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s",
+            user_id,
+            _safe_id(customer_id),
+            PROMPT_PACK_CREDITS,
+            self.app_env,
         )
         return stripe.checkout.Session.create(**payload)
 

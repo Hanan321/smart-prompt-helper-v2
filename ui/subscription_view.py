@@ -16,6 +16,17 @@ def subscription_panel(
     billing_period_end = profile.get("billing_period_end")
     monthly_used = int(profile.get("monthly_prompts_used", 0) or 0)
     monthly_limit = int(profile.get("monthly_prompt_limit", 0) or 0)
+    credit_balance = int(profile.get("credit_balance", 0) or 0)
+    app_env = getattr(settings, "app_env", "live")
+    is_test_mode = app_env == "test"
+    free_prompt_limit = int(
+        profile.get(
+            "free_prompt_limit",
+            getattr(settings, "test_free_total_prompt_limit", 2)
+            if is_test_mode
+            else getattr(settings, "free_total_prompt_limit", 5),
+        )
+    )
 
     is_real_stripe_subscription = bool(customer_id and subscription_id)
 
@@ -57,25 +68,58 @@ def subscription_panel(
                 "Billing portal, cancellation, invoices, and payment updates are only available for real Stripe test or live subscriptions."
             )
     else:
-        st.info("You are currently on the Free plan. Upgrade anytime for more monthly prompts.")
+        if is_test_mode and credit_balance > 0:
+            st.info(
+                f"You are currently on the Free plan with {credit_balance} purchased prompt credits available."
+            )
+        else:
+            st.info("You are currently on the Free plan. Upgrade anytime for more prompts.")
 
     plans = [
-        ("Free Trial", "$0", "5 prompts total to test the app", None),
-        (
-            "Pro",
-            "$20/month",
-            "Up to 200 prompts per month for academic and research workflows",
-            getattr(
+        {
+            "name": "Free Trial",
+            "price": "$0",
+            "desc": f"{free_prompt_limit} prompts total to test the app",
+            "kind": "free",
+            "price_id": None,
+        },
+    ]
+    if is_test_mode:
+        plans.append(
+            {
+                "name": "Prompt Pack",
+                "price": "$5",
+                "desc": "10 one-time prompt credits. Credits accumulate and do not expire.",
+                "kind": "pack",
+                "price_id": getattr(
+                    getattr(settings, "billing_config", None),
+                    "stripe_price_pack_10",
+                    getattr(settings, "stripe_price_pack_10", ""),
+                ),
+            }
+        )
+    plans.append(
+        {
+            "name": "Pro",
+            "price": "$20/month",
+            "desc": "Up to 200 prompts per month. Monthly prompts reset each billing cycle.",
+            "kind": "pro",
+            "price_id": getattr(
                 getattr(settings, "billing_config", None),
                 "stripe_price_pro",
                 settings.stripe_price_pro,
             ),
-        ),
-    ]
+        }
+    )
 
-    cols = st.columns(2)
+    cols = st.columns(len(plans))
 
-    for idx, (plan_name, price_label, desc, price_id) in enumerate(plans):
+    for idx, plan in enumerate(plans):
+        plan_name = plan["name"]
+        price_label = plan["price"]
+        desc = plan["desc"]
+        price_id = plan["price_id"]
+        kind = plan["kind"]
         with cols[idx]:
             with st.container(border=True):
                 st.markdown(f"**{plan_name}**")
@@ -88,8 +132,33 @@ def subscription_panel(
                     unsafe_allow_html=True,
                 )
 
-                if plan_name == "Free Trial":
-                    st.caption("Includes 5 total prompts to test the app.")
+                if kind == "free":
+                    st.caption(f"Includes {free_prompt_limit} total prompts to test the app.")
+                elif kind == "pack":
+                    st.caption(f"Purchased credits available: {credit_balance}")
+                    if st.button(
+                        "Buy 10 prompts",
+                        type="secondary",
+                        use_container_width=True,
+                    ):
+                        try:
+                            checkout_session = billing_service.create_prompt_pack_checkout_session(
+                                customer_email=user.get("email"),
+                                success_url=settings.app_base_url,
+                                cancel_url=settings.app_base_url,
+                                price_id=price_id,
+                                user_id=user["id"],
+                                admin_client=admin_client,
+                                stripe_customer_id=customer_id,
+                            )
+                            st.link_button(
+                                "Continue to secure checkout",
+                                checkout_session.url,
+                                type="primary",
+                                use_container_width=True,
+                            )
+                        except Exception as exc:
+                            st.error(f"Could not start checkout: {exc}")
                 else:
                     if current_plan == "pro":
                         if is_real_stripe_subscription:

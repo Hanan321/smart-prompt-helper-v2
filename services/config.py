@@ -19,6 +19,7 @@ class BillingConfig:
     stripe_secret_key: str
     stripe_publishable_key: str
     stripe_price_pro: str
+    stripe_price_pack_10: str
     stripe_webhook_secret: str
     required_secret_names: tuple[str, ...]
     using_legacy_live_names: bool = False
@@ -33,6 +34,7 @@ class Settings:
     stripe_secret_key: str
     stripe_publishable_key: str
     stripe_price_pro: str
+    stripe_price_pack_10: str
     stripe_webhook_secret: str
     billing_config: BillingConfig
     app_env: str
@@ -43,6 +45,7 @@ class Settings:
     cookies_password: str  # ✅ NEW
 
     free_total_prompt_limit: int = 5
+    test_free_total_prompt_limit: int = 2
     pro_monthly_prompt_limit: int = 200
 
 
@@ -101,6 +104,7 @@ def get_billing_config() -> BillingConfig:
         "stripe_secret_key": f"STRIPE_SECRET_KEY_{suffix}",
         "stripe_publishable_key": f"STRIPE_PUBLISHABLE_KEY_{suffix}",
         "stripe_price_pro": f"STRIPE_PRICE_PRO_{suffix}",
+        "stripe_price_pack_10": f"STRIPE_PRICE_PACK_10_{suffix}",
         "stripe_webhook_secret": f"STRIPE_WEBHOOK_SECRET_{suffix}",
     }
 
@@ -117,6 +121,7 @@ def get_billing_config() -> BillingConfig:
             "stripe_secret_key": "STRIPE_SECRET_KEY",
             "stripe_publishable_key": "STRIPE_PUBLISHABLE_KEY",
             "stripe_price_pro": "STRIPE_PRICE_PRO",
+            "stripe_price_pack_10": "STRIPE_PRICE_PACK_10",
             "stripe_webhook_secret": "STRIPE_WEBHOOK_SECRET",
         }
         for field_name, legacy_name in legacy_secret_names.items():
@@ -134,6 +139,7 @@ def get_billing_config() -> BillingConfig:
         stripe_secret_key=values["stripe_secret_key"],
         stripe_publishable_key=values["stripe_publishable_key"],
         stripe_price_pro=values["stripe_price_pro"],
+        stripe_price_pack_10=values["stripe_price_pack_10"],
         stripe_webhook_secret=values["stripe_webhook_secret"],
         required_secret_names=tuple(secret_names.values()),
         using_legacy_live_names=using_legacy_live_names,
@@ -148,8 +154,12 @@ def validate_billing_config(billing_config: BillingConfig) -> list[str]:
         billing_config.required_secret_names[0]: billing_config.stripe_secret_key,
         billing_config.required_secret_names[1]: billing_config.stripe_publishable_key,
         billing_config.required_secret_names[2]: billing_config.stripe_price_pro,
-        billing_config.required_secret_names[3]: billing_config.stripe_webhook_secret,
+        billing_config.required_secret_names[4]: billing_config.stripe_webhook_secret,
     }
+    if billing_config.app_env == "test":
+        required_values[billing_config.required_secret_names[3]] = (
+            billing_config.stripe_price_pack_10
+        )
     missing = [key for key, value in required_values.items() if not value]
 
     if billing_config.using_legacy_live_names:
@@ -157,6 +167,7 @@ def validate_billing_config(billing_config: BillingConfig) -> list[str]:
             "STRIPE_SECRET_KEY_LIVE": "STRIPE_SECRET_KEY",
             "STRIPE_PUBLISHABLE_KEY_LIVE": "STRIPE_PUBLISHABLE_KEY",
             "STRIPE_PRICE_PRO_LIVE": "STRIPE_PRICE_PRO",
+            "STRIPE_PRICE_PACK_10_LIVE": "STRIPE_PRICE_PACK_10",
             "STRIPE_WEBHOOK_SECRET_LIVE": "STRIPE_WEBHOOK_SECRET",
         }
         missing = [f"{key} or legacy {legacy_names[key]}" for key in missing]
@@ -180,6 +191,11 @@ def validate_billing_config(billing_config: BillingConfig) -> list[str]:
             "active Stripe publishable key",
         ),
         (billing_config.stripe_price_pro, "price_", "active Stripe Pro price ID"),
+        (
+            billing_config.stripe_price_pack_10,
+            "price_",
+            "active Stripe 10-prompt pack price ID",
+        ),
         (
             billing_config.stripe_webhook_secret,
             "whsec_",
@@ -210,6 +226,7 @@ def get_settings() -> Settings:
         stripe_secret_key=billing_config.stripe_secret_key,
         stripe_publishable_key=billing_config.stripe_publishable_key,
         stripe_price_pro=billing_config.stripe_price_pro,
+        stripe_price_pack_10=billing_config.stripe_price_pack_10,
         stripe_webhook_secret=billing_config.stripe_webhook_secret,
         billing_config=billing_config,
         app_env=billing_config.app_env,
@@ -220,6 +237,7 @@ def get_settings() -> Settings:
         cookies_password=get_config_value("COOKIES_PASSWORD"),  # ✅ NEW
 
         free_total_prompt_limit=get_config_int("FREE_TOTAL_PROMPT_LIMIT", 5),
+        test_free_total_prompt_limit=get_config_int("TEST_FREE_TOTAL_PROMPT_LIMIT", 2),
         pro_monthly_prompt_limit=get_config_int("PRO_MONTHLY_PROMPT_LIMIT", 200),
     )
 

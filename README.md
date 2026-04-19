@@ -25,7 +25,9 @@ The app combines **Supabase authentication**, **Stripe billing**, **usage tracki
 Smart Prompt Helper is designed for:
 
 - Researchers
-- Graduate students
+- Middle school students
+- High school students
+- University/College students
 - University faculty
 - Academic professionals
 - Students working on academic writing, summaries, outlines, and research tasks
@@ -35,7 +37,11 @@ Smart Prompt Helper is designed for:
 ## Pricing
 
 ### Free Plan
-- 5 prompts total to test the app
+- 2 prompts total to test the app in staging
+
+### Prompt Pack — $5
+- 10 one-time prompts in staging
+- Purchased credits accumulate and do not expire
 
 ### Pro Plan — $20/month
 - Up to 200 prompts per month

@@ -11,6 +11,8 @@ def account_summary_panel(
     supabase_auth,
     cookies,
     clear_auth_cookies,
+    credit_balance: int = 0,
+    free_prompt_limit: int = 5,
 ) -> None:
     with st.container(border=True):
         profile_col, logout_col = st.columns([1, 1])
@@ -45,7 +47,9 @@ def account_summary_panel(
         )
 
         if current_plan == "free":
-            st.write(f"Free trial usage: **{total_used}/5 prompts**")
+            st.write(f"Free trial usage: **{total_used}/{free_prompt_limit} prompts**")
+            if credit_balance > 0:
+                st.write(f"Purchased credits: **{credit_balance} prompts**")
         else:
             if monthly_limit > 0:
                 st.write(f"Monthly usage: **{monthly_used}/{monthly_limit} prompts**")

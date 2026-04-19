@@ -371,6 +371,15 @@ def app_panel(user: dict) -> None:
     total_used = get_total_prompt_count(supabase_admin, user["id"])
     monthly_used = get_monthly_prompt_count(supabase_admin, user["id"])
     monthly_limit = get_monthly_prompt_limit(supabase_admin, user["id"])
+    credit_balance = int(profile.get("credit_balance", 0) or 0)
+    free_prompt_limit = int(
+        profile.get(
+            "free_prompt_limit",
+            settings.test_free_total_prompt_limit
+            if settings.app_env == "test"
+            else settings.free_total_prompt_limit,
+        )
+    )
 
     st.markdown(
         "<div class='main-title'>🎓 Smart Prompt Helper</div>",
@@ -391,6 +400,8 @@ def app_panel(user: dict) -> None:
         supabase_auth,
         cookies,
         clear_auth_cookies,
+        credit_balance,
+        free_prompt_limit,
     )
 
     prompt_form_panel(

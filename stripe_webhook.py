@@ -103,8 +103,12 @@ supabase = create_client(
 
 BILLING_SELECT = (
     "user_id,environment,plan,subscription_status,stripe_customer_id,"
-    "stripe_subscription_id,cancel_at_period_end,current_period_end"
+    "stripe_subscription_id,cancel_at_period_end,current_period_end,"
+    "credit_balance,total_credits_purchased,monthly_prompts_used"
 )
+
+PROMPT_PACK_PURCHASE_TYPE = "prompt_pack_10"
+PROMPT_PACK_CREDITS = 10
 
 app = FastAPI(title="Stripe Webhook")
 
@@ -176,6 +180,9 @@ def get_billing_by_user_id(user_id: str | None, create_if_missing: bool = True) 
         "subscription_status": None,
         "cancel_at_period_end": False,
         "current_period_end": None,
+        "credit_balance": 0,
+        "total_credits_purchased": 0,
+        "monthly_prompts_used": 0,
     }
     try:
         supabase.table("user_billing").insert(initial_row).execute()
@@ -230,9 +237,14 @@ def reset_monthly_usage(user_id: str | None) -> None:
         return
 
     try:
-        supabase.table("user_profiles").update({"monthly_prompts_used": 0}).eq(
-            "id", user_id
-        ).execute()
+        if billing_config.app_env == "test":
+            supabase.table("user_billing").update({"monthly_prompts_used": 0}).eq(
+                "user_id", user_id
+            ).eq("environment", billing_config.app_env).execute()
+        else:
+            supabase.table("user_profiles").update({"monthly_prompts_used": 0}).eq(
+                "id", user_id
+            ).execute()
     except Exception as exc:
         logger.exception("Could not reset monthly usage by user ID.")
         raise HTTPException(status_code=500, detail="Database update failed.") from exc
@@ -344,6 +356,45 @@ def retrieve_subscription(subscription_id: str):
         ) from exc
 
 
+def grant_prompt_pack_credits(
+    user_id: str,
+    checkout_session_id: str | None,
+    customer_id: str | None,
+) -> bool:
+    if billing_config.app_env != "test":
+        logger.info("Prompt pack checkout ignored outside test environment.")
+        return False
+
+    if not checkout_session_id:
+        logger.warning("Prompt pack checkout missing session ID.")
+        return False
+
+    try:
+        response = supabase.rpc(
+            "grant_prompt_pack_credits",
+            {
+                "p_user_id": user_id,
+                "p_environment": billing_config.app_env,
+                "p_checkout_session_id": checkout_session_id,
+                "p_credits": PROMPT_PACK_CREDITS,
+                "p_stripe_customer_id": customer_id,
+            },
+        ).execute()
+    except Exception as exc:
+        logger.exception("Could not grant prompt pack credits.")
+        raise HTTPException(status_code=500, detail="Credit grant failed.") from exc
+
+    granted = bool(getattr(response, "data", False))
+    logger.info(
+        "Prompt pack credit grant %s: user_id=%s env=%s credits=%s",
+        "applied" if granted else "already processed",
+        user_id,
+        billing_config.app_env,
+        PROMPT_PACK_CREDITS,
+    )
+    return granted
+
+
 @app.post("/webhooks/stripe")
 async def stripe_webhook(
     request: Request,
@@ -401,12 +452,21 @@ async def stripe_webhook(
             or get_user_id_by_email(customer_email)
         )
         plan = metadata.get("plan") or ("pro" if data.get("payment_link") else "free")
+        purchase_type = metadata.get("purchase_type")
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
 
         if not user_id:
             logger.warning("Checkout session completed without a resolvable user_id.")
             return {"ok": True, "ignored": "missing_user_id"}
+
+        if purchase_type == PROMPT_PACK_PURCHASE_TYPE:
+            grant_prompt_pack_credits(
+                user_id=user_id,
+                checkout_session_id=data.get("id"),
+                customer_id=customer_id,
+            )
+            return {"ok": True}
 
         if plan != "pro":
             logger.info("Checkout session completed for non-Pro plan; no profile update.")

@@ -88,7 +88,7 @@ def landing_page() -> None:
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<div class='lp-hero-subtitle'>Designed for undergraduate students, graduate learners, and researchers who want clear, structured, high-quality results from AI tools like ChatGPT.</div>",
+            "<div class='lp-hero-subtitle'>Designed for students, higher education users, and researchers who want clear, structured, high-quality results from AI tools like ChatGPT.</div>",
             unsafe_allow_html=True,
         )
 
@@ -148,7 +148,7 @@ def landing_page() -> None:
             st.markdown("<div class='lp-step-label'>Step 1</div>", unsafe_allow_html=True)
             st.markdown("<div class='lp-step-title'>Choose your audience</div>", unsafe_allow_html=True)
             st.markdown(
-                "<div class='lp-step-text'>Select Undergraduate, Graduate, or Researcher / Professional to match the right tone and quality level.</div>",
+                "<div class='lp-step-text'>Select Middle school, High school, University/College, Researchers, or Higher education level to match the right tone and quality level.</div>",
                 unsafe_allow_html=True,
             )
 
@@ -185,9 +185,11 @@ def landing_page() -> None:
         st.markdown(
             """
             <div class='lp-chip-row'>
-                <span class='lp-chip'>Undergraduate</span>
-                <span class='lp-chip'>Graduate</span>
-                <span class='lp-chip'>Researcher / Professional</span>
+                <span class='lp-chip'>Middle school</span>
+                <span class='lp-chip'>High school</span>
+                <span class='lp-chip'>University/College</span>
+                <span class='lp-chip'>Researchers</span>
+                <span class='lp-chip'>Higher education level</span>
                 <span class='lp-chip'>Clear</span>
                 <span class='lp-chip'>Structured</span>
                 <span class='lp-chip'>Context-aware</span>
@@ -232,14 +234,15 @@ def landing_page() -> None:
                 st.subheader("Free Plan")
                 st.markdown("### $0")
                 st.caption("A simple way to try the platform")
-                st.write("• 5 prompts")
+                st.write("• 2 prompts in test mode")
                 st.write("• Full access to core features")
 
         with p2:
             with st.container(border=True):
-                st.subheader("Pro Plan")
-                st.markdown("### $20/month")
+                st.subheader("Prompt Pack or Pro")
+                st.markdown("### $5 or $20/month")
                 st.caption("For more regular and serious use")
+                st.write("• 10 one-time prompts for $5 in test mode")
                 st.write("• 200 prompts per month")
                 st.write("• Designed for academic and professional workflows")
 

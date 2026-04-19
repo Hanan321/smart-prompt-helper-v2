@@ -28,18 +28,46 @@ def prompt_form_panel(
 
     st.divider()
 
+    school_tasks = [
+        "Explain a topic",
+        "Summarize notes",
+        "Make quiz questions",
+        "Improve writing",
+        "Write an essay",
+        "Generate study guide",
+        "Create presentation outline",
+        "Other / Something else",
+    ]
+    advanced_tasks = [
+        "Summarize a research paper",
+        "Improve academic writing",
+        "Generate research questions",
+        "Turn notes into a structured academic outline",
+        "Write an essay",
+        "Generate study guide",
+        "Create presentation outline",
+        "Other / Something else",
+    ]
+    researcher_tasks = [
+        "Summarize a research paper",
+        "Improve academic writing",
+        "Generate research questions",
+        "Refine a literature review",
+        "Rewrite for clarity, formality, and precision",
+        "Write an essay",
+        "Generate study guide",
+        "Create presentation outline",
+        "Other / Something else",
+    ]
+
     task_map = {
-        "Undergraduate": [
+        "Middle school": school_tasks,
+        "High school": school_tasks,
+        "University/College": advanced_tasks,
+        "Researchers": researcher_tasks,
+        "Higher education level": [
             "Explain a topic",
             "Summarize notes",
-            "Make quiz questions",
-            "Improve writing",
-            "Write an essay",
-            "Generate study guide",
-            "Create presentation outline",
-            "Other / Something else",
-        ],
-        "Graduate": [
             "Summarize a research paper",
             "Improve academic writing",
             "Generate research questions",
@@ -49,23 +77,14 @@ def prompt_form_panel(
             "Create presentation outline",
             "Other / Something else",
         ],
-        "Researcher / Professional": [
-            "Summarize a research paper",
-            "Improve academic writing",
-            "Generate research questions",
-            "Refine a literature review",
-            "Rewrite for clarity, formality, and precision",
-            "Write an essay",
-            "Generate study guide",
-            "Create presentation outline",
-            "Other / Something else",
-        ],
     }
 
     placeholder_map = {
-        "Undergraduate": "Example: biology summary, explain photosynthesis, improve my paragraph",
-        "Graduate": "Example: summarize this abstract, improve discussion section, research questions on addiction",
-        "Researcher / Professional": "Example: refine literature review, rewrite for journal tone, outline presentation",
+        "Middle school": "Example: explain photosynthesis, summarize my science notes, make practice questions",
+        "High school": "Example: biology summary, improve my essay paragraph, create study questions",
+        "University/College": "Example: summarize this abstract, improve discussion section, research questions on addiction",
+        "Researchers": "Example: refine literature review, rewrite for journal tone, outline presentation",
+        "Higher education level": "Example: explain a complex topic, improve academic writing, summarize research notes",
     }
 
     col1, col2 = st.columns(2)
@@ -105,12 +124,12 @@ def prompt_form_panel(
     if clean_user_text and len(clean_user_text) < 8:
         st.info("Short input is okay — the app will expand it into a strong prompt.")
 
-    if audience == "Undergraduate":
-        tip_text = "Tip: Adding the course topic can improve results, but it's optional."
-    elif audience == "Graduate":
-        tip_text = "Tip: Include subject area or assignment goal for more precise output."
-    else:
+    if audience in {"Middle school", "High school"}:
+        tip_text = "Tip: Adding the class topic can improve results, but it's optional."
+    elif audience == "Researchers":
         tip_text = "Tip: Include discipline or research goal for best results."
+    else:
+        tip_text = "Tip: Include subject area or assignment goal for more precise output."
 
     st.markdown(f"<div class='tip'>{tip_text}</div>", unsafe_allow_html=True)
 
