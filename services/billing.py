@@ -1,12 +1,14 @@
 import logging
 from typing import Optional
 from datetime import datetime, timezone
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import stripe
 from supabase import Client
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
 PROMPT_PACK_CREDITS = 10
+PROMPT_PACK_PURCHASE_TYPE = "prompt_pack_10"
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
 BILLING_SELECT = "*"
 logger = logging.getLogger(__name__)
@@ -38,6 +40,21 @@ def _safe_id(value: str | None) -> str:
     if len(value) <= 8:
         return value
     return f"...{value[-6:]}"
+
+
+def _url_with_query(url: str, params: dict[str, str]) -> str:
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.update(params)
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            urlencode(query),
+            parts.fragment,
+        )
+    )
 
 
 def _plan_from_subscription_status(status: str | None) -> str:
@@ -303,17 +320,29 @@ class BillingService:
             existing_customer_id=stripe_customer_id,
         )
 
+        success_url_with_session = _url_with_query(
+            success_url,
+            {
+                "prompt_pack_checkout": "success",
+                "checkout_session_id": "{CHECKOUT_SESSION_ID}",
+            },
+        )
+        cancel_url_with_context = _url_with_query(
+            cancel_url,
+            {"prompt_pack_checkout": "cancelled"},
+        )
+
         payload = {
             "mode": "payment",
             "payment_method_types": ["card"],
             "line_items": [{"price": price_id, "quantity": 1}],
-            "success_url": success_url,
-            "cancel_url": cancel_url,
+            "success_url": success_url_with_session,
+            "cancel_url": cancel_url_with_context,
             "customer": customer_id,
             "client_reference_id": user_id,
             "metadata": {
                 "user_id": user_id,
-                "purchase_type": "prompt_pack_10",
+                "purchase_type": PROMPT_PACK_PURCHASE_TYPE,
                 "credits": str(PROMPT_PACK_CREDITS),
                 "environment": self.app_env,
             },
@@ -327,6 +356,107 @@ class BillingService:
             self.app_env,
         )
         return stripe.checkout.Session.create(**payload)
+
+    def _is_paid_prompt_pack_session(self, checkout_session, user_id: str) -> bool:
+        metadata = _stripe_value(checkout_session, "metadata", {}) or {}
+        return (
+            _stripe_value(checkout_session, "mode") == "payment"
+            and _stripe_value(checkout_session, "payment_status") == "paid"
+            and metadata.get("purchase_type") == PROMPT_PACK_PURCHASE_TYPE
+            and metadata.get("user_id") == user_id
+            and metadata.get("environment") == self.app_env
+        )
+
+    def grant_prompt_pack_credits(
+        self,
+        admin_client: Client,
+        user_id: str,
+        checkout_session_id: str,
+        stripe_customer_id: str | None,
+    ) -> bool:
+        response = admin_client.rpc(
+            "grant_prompt_pack_credits",
+            {
+                "p_user_id": user_id,
+                "p_environment": self.app_env,
+                "p_checkout_session_id": checkout_session_id,
+                "p_credits": PROMPT_PACK_CREDITS,
+                "p_stripe_customer_id": stripe_customer_id,
+            },
+        ).execute()
+        granted = bool(getattr(response, "data", False))
+        logger.info(
+            "Prompt pack credit sync %s: user_id=%s env=%s session_id=%s",
+            "granted" if granted else "already processed",
+            user_id,
+            self.app_env,
+            _safe_id(checkout_session_id),
+        )
+        return granted
+
+    def sync_prompt_pack_checkout_session(
+        self,
+        admin_client: Client,
+        user_id: str,
+        checkout_session_id: str | None,
+    ) -> bool:
+        if self.app_env != "test" or not checkout_session_id:
+            return False
+
+        checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+        if not self._is_paid_prompt_pack_session(checkout_session, user_id):
+            logger.info(
+                "Checkout session was not a paid prompt pack for this user: user_id=%s env=%s session_id=%s",
+                user_id,
+                self.app_env,
+                _safe_id(checkout_session_id),
+            )
+            return False
+
+        customer_id = _stripe_value(checkout_session, "customer")
+        return self.grant_prompt_pack_credits(
+            admin_client,
+            user_id,
+            checkout_session_id,
+            customer_id,
+        )
+
+    def sync_completed_prompt_pack_purchases(
+        self,
+        admin_client: Client,
+        user_id: str,
+        stripe_customer_id: str | None,
+    ) -> int:
+        if self.app_env != "test" or not stripe_customer_id:
+            return 0
+
+        sessions = stripe.checkout.Session.list(
+            customer=stripe_customer_id,
+            limit=100,
+        )
+        grants = 0
+        for checkout_session in getattr(sessions, "data", []) or []:
+            if not self._is_paid_prompt_pack_session(checkout_session, user_id):
+                continue
+            session_id = _stripe_value(checkout_session, "id")
+            if not session_id:
+                continue
+            if self.grant_prompt_pack_credits(
+                admin_client,
+                user_id,
+                session_id,
+                stripe_customer_id,
+            ):
+                grants += 1
+
+        if grants:
+            logger.info(
+                "Synced completed prompt pack purchases: user_id=%s env=%s grants=%s",
+                user_id,
+                self.app_env,
+                grants,
+            )
+        return grants
 
     def create_billing_portal_session(
         self,

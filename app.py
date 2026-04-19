@@ -365,6 +365,41 @@ def app_panel(user: dict) -> None:
         except Exception:
             st.warning("Could not refresh your billing status automatically. Please contact support if your payment was completed.")
 
+    if settings.app_env == "test":
+        checkout_session_id = st.query_params.get("checkout_session_id")
+        prompt_pack_checkout = st.query_params.get("prompt_pack_checkout")
+        try:
+            synced_from_redirect = False
+            if prompt_pack_checkout == "success" and checkout_session_id:
+                synced_from_redirect = billing_service.sync_prompt_pack_checkout_session(
+                    supabase_admin,
+                    user["id"],
+                    checkout_session_id,
+                )
+
+            sync_key = f"prompt_pack_sync_checked_{user['id']}"
+            synced_from_history = 0
+            if not st.session_state.get(sync_key):
+                synced_from_history = billing_service.sync_completed_prompt_pack_purchases(
+                    supabase_admin,
+                    user["id"],
+                    profile.get("stripe_customer_id"),
+                )
+                st.session_state[sync_key] = True
+
+            if synced_from_redirect or synced_from_history:
+                profile = get_user_profile(supabase_admin, user["id"])
+                st.success("Your prompt-pack credits have been added.")
+                if prompt_pack_checkout:
+                    st.query_params.clear()
+                    st.rerun()
+            elif prompt_pack_checkout:
+                st.query_params.clear()
+        except Exception:
+            st.warning(
+                "Could not sync your prompt-pack purchase automatically. Please make sure the Supabase billing migration has been applied."
+            )
+
     current_plan = (profile.get("plan") or "free").lower()
     display_name = profile.get("username") or user.get("email", "unknown")
 
