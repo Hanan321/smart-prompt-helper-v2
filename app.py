@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from urllib.parse import parse_qsl
 
@@ -36,6 +37,8 @@ from ui.prompt_form_view import prompt_form_panel
 from ui.prompt_result_view import prompt_result_panel
 from ui.styles import render_styles
 from ui.subscription_view import subscription_panel
+
+logger = logging.getLogger(__name__)
 
 
 st.set_page_config(
@@ -368,6 +371,10 @@ def app_panel(user: dict) -> None:
     if settings.app_env == "test":
         checkout_session_id = st.query_params.get("checkout_session_id")
         prompt_pack_checkout = st.query_params.get("prompt_pack_checkout")
+        had_prompt_pack_credits = (
+            int(profile.get("credit_balance", 0) or 0) > 0
+            or int(profile.get("total_credits_purchased", 0) or 0) > 0
+        )
         try:
             synced_from_redirect = False
             if prompt_pack_checkout == "success" and checkout_session_id:
@@ -387,18 +394,46 @@ def app_panel(user: dict) -> None:
                 )
                 st.session_state[sync_key] = True
 
+            profile = get_user_profile(supabase_admin, user["id"])
+            has_prompt_pack_credits = (
+                int(profile.get("credit_balance", 0) or 0) > 0
+                or int(profile.get("total_credits_purchased", 0) or 0) > 0
+            )
+
             if synced_from_redirect or synced_from_history:
-                profile = get_user_profile(supabase_admin, user["id"])
                 st.success("Your prompt-pack credits have been added.")
                 if prompt_pack_checkout:
                     st.query_params.clear()
                     st.rerun()
+            elif prompt_pack_checkout and has_prompt_pack_credits:
+                logger.info(
+                    "Prompt pack checkout already reflected in billing: user_id=%s env=%s",
+                    user["id"],
+                    settings.app_env,
+                )
+                st.query_params.clear()
+                st.rerun()
             elif prompt_pack_checkout:
                 st.query_params.clear()
         except Exception:
-            st.warning(
-                "Could not sync your prompt-pack purchase automatically. Please make sure the Supabase billing migration has been applied."
+            profile = get_user_profile(supabase_admin, user["id"])
+            has_prompt_pack_credits = (
+                int(profile.get("credit_balance", 0) or 0) > 0
+                or int(profile.get("total_credits_purchased", 0) or 0) > 0
             )
+            if prompt_pack_checkout:
+                st.query_params.clear()
+            if has_prompt_pack_credits or had_prompt_pack_credits:
+                logger.info(
+                    "Prompt pack sync warning suppressed because credits are present: user_id=%s env=%s",
+                    user["id"],
+                    settings.app_env,
+                )
+            else:
+                logger.exception("Could not sync prompt-pack purchase automatically.")
+                st.warning(
+                    "Could not sync your prompt-pack purchase automatically. Please make sure the Supabase billing migration has been applied."
+                )
 
     current_plan = (profile.get("plan") or "free").lower()
     display_name = profile.get("username") or user.get("email", "unknown")
