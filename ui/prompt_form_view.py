@@ -35,9 +35,8 @@ def prompt_form_panel(
             "Summarize notes",
             "Make quiz questions",
             "Improve writing",
-            "Write an essay",
             "Generate study guide",
-            "Create presentation outline",
+            "Create flashcards",
             "Other / Something else",
         ],
         "High school": [
@@ -46,6 +45,7 @@ def prompt_form_panel(
             "Make quiz questions",
             "Improve writing",
             "Write an essay",
+            "Build an essay outline",
             "Generate study guide",
             "Create presentation outline",
             "Other / Something else",
@@ -53,10 +53,11 @@ def prompt_form_panel(
         "University/College": [
             "Explain a topic",
             "Summarize notes",
-            "Make quiz questions",
             "Improve writing",
             "Write an essay",
-            "Generate study guide",
+            "Draft a thesis statement",
+            "Build an essay outline",
+            "Analyze an argument",
             "Create presentation outline",
             "Other / Something else",
         ],
@@ -65,56 +66,47 @@ def prompt_form_panel(
             "Improve academic writing",
             "Generate research questions",
             "Turn notes into a structured academic outline",
-            "Write an essay",
-            "Generate study guide",
-            "Create presentation outline",
+            "Analyze a theory or framework",
+            "Compare scholarly arguments",
+            "Prepare a seminar outline",
             "Other / Something else",
         ],
         "Researchers": [
             "Summarize a research paper",
-            "Improve academic writing",
-            "Generate research questions",
             "Refine a literature review",
+            "Generate research questions",
+            "Identify research gaps",
+            "Compare multiple papers",
+            "Suggest methodology improvements",
+            "Draft a journal abstract",
             "Rewrite for clarity, formality, and precision",
-            "Write an essay",
-            "Generate study guide",
-            "Create presentation outline",
             "Other / Something else",
         ],
     }
 
     pro_task_map = {
         "Middle school": [
-            "Create flashcards",
             "Make a homework plan",
-            "Turn notes into practice problems",
+            "Turn notes into practice questions",
         ],
         "High school": [
             "Create flashcards",
-            "Make a homework plan",
             "Draft a thesis statement",
-            "Build an essay outline",
             "Turn notes into practice problems",
         ],
         "University/College": [
-            "Draft a thesis statement",
-            "Build an essay outline",
             "Create an annotated bibliography plan",
-            "Analyze an argument",
             "Prepare for an exam",
+            "Turn notes into discussion questions",
         ],
         "Higher education level": [
-            "Create an annotated bibliography plan",
-            "Analyze research methods",
             "Create a data analysis plan",
             "Draft a discussion section",
             "Prepare a conference presentation",
         ],
         "Researchers": [
-            "Analyze research methods",
-            "Create a data analysis plan",
-            "Draft a journal abstract",
-            "Prepare a conference proposal",
+            "Prepare peer review feedback",
+            "Generate future research directions",
             "Create a grant proposal outline",
         ],
     }
@@ -126,11 +118,11 @@ def prompt_form_panel(
         task_map[audience] = tasks[:-1] + pro_tasks + [tasks[-1]]
 
     placeholder_map = {
-        "Middle school": "Example: biology summary, explain photosynthesis, improve my paragraph",
-        "High school": "Example: biology summary, explain photosynthesis, improve my paragraph",
-        "University/College": "Example: biology summary, explain photosynthesis, improve my paragraph",
-        "Higher education level": "Example: summarize this abstract, improve discussion section, research questions on addiction",
-        "Researchers": "Example: refine literature review, rewrite for journal tone, outline presentation",
+        "Middle school": "Example: Explain photosynthesis for science class, summarize my history notes, make quiz questions",
+        "High school": "Example: Build an essay outline on Macbeth, summarize biology notes, make a study guide for finals",
+        "University/College": "Example: Draft a thesis on climate policy, analyze this argument, improve my sociology essay",
+        "Higher education level": "Example: Prepare a seminar outline on critical theory, summarize this abstract, compare scholarly arguments",
+        "Researchers": "Example: Refine my literature review, evaluate methodology limitations, rewrite this section for publication",
     }
 
     col1, col2 = st.columns(2)
