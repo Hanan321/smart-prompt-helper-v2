@@ -54,11 +54,21 @@ Smart Prompt Helper is designed for:
 
 The Stripe webhook handler is the FastAPI app in `stripe_webhook.py`, not the Streamlit UI app.
 
-Run/deploy it with:
+The Streamlit app stays the frontend. Deploy the webhook separately as a Python/FastAPI web service from the same repo.
+
+Local run command:
 
 ```bash
 uvicorn stripe_webhook:app --host 0.0.0.0 --port 8000
 ```
+
+Production-style start command:
+
+```bash
+uvicorn stripe_webhook:app --host 0.0.0.0 --port $PORT
+```
+
+`Procfile.webhook` contains the same backend start command for platforms that support Procfile-style services.
 
 Use one of these paths on the deployed FastAPI webhook host:
 
@@ -66,6 +76,26 @@ Use one of these paths on the deployed FastAPI webhook host:
 - Compatibility alias: `/stripe-webhook`
 
 Do not point Stripe webhooks at the Streamlit app URL unless that same host is explicitly running the FastAPI app.
+
+Staging webhook URL shape:
+
+```text
+https://<your-staging-fastapi-webhook-host>/webhooks/stripe
+```
+
+Live webhook URL shape:
+
+```text
+https://<your-live-fastapi-webhook-host>/webhooks/stripe
+```
+
+Diagnostic route on the FastAPI webhook host:
+
+```text
+https://<your-fastapi-webhook-host>/__debug/stripe
+```
+
+If `https://smart-prompt-h-dev.streamlit.app/__debug/stripe` does not return JSON, that host is only serving Streamlit and must not be used as the Stripe webhook endpoint.
 
 ---
 
