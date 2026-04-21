@@ -396,10 +396,16 @@ def grant_prompt_pack_credits(
 
 
 @app.post("/webhooks/stripe")
+@app.post("/stripe-webhook")
 async def stripe_webhook(
     request: Request,
     stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
 ):
+    logger.info(
+        "Stripe webhook handler entry reached: path=%s env=%s",
+        request.url.path,
+        billing_config.app_env,
+    )
     payload = await request.body()
 
     if not stripe_signature:
