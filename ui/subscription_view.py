@@ -2,6 +2,7 @@ import logging
 from urllib.parse import urlsplit, urlunsplit
 
 import streamlit as st
+from services.diagnostics import key_label
 
 logger = logging.getLogger(__name__)
 
@@ -195,6 +196,13 @@ def subscription_panel(
                     ):
                         try:
                             checkout_base_url = _checkout_base_url(settings)
+                            logger.info(
+                                "Prompt pack checkout launch diagnostics: env=%s publishable_key=%s checkout_base_url=%s expected_webhook_path=%s",
+                                getattr(settings, "app_env", "unknown"),
+                                key_label(getattr(settings, "stripe_publishable_key", "")),
+                                checkout_base_url,
+                                "/webhooks/stripe or /stripe-webhook on the FastAPI webhook host",
+                            )
                             checkout_session = billing_service.create_prompt_pack_checkout_session(
                                 customer_email=user.get("email"),
                                 success_url=checkout_base_url,

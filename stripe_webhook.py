@@ -10,6 +10,7 @@ from services.config import (
     get_billing_config,
     get_config_value,
 )
+from services.diagnostics import key_label
 
 load_dotenv()
 
@@ -88,7 +89,14 @@ config_errors = billing_config_errors + supabase_config_errors
 if config_errors:
     raise RuntimeError("Invalid webhook configuration: " + "; ".join(config_errors))
 
-logger.info("Stripe webhook billing environment: %s", billing_config.app_env)
+logger.info(
+    "Stripe webhook startup diagnostics: env=%s secret_key=%s publishable_key=%s webhook_secret=%s mounted_paths=%s",
+    billing_config.app_env,
+    key_label(billing_config.stripe_secret_key),
+    key_label(billing_config.stripe_publishable_key),
+    key_label(billing_config.stripe_webhook_secret),
+    ["/webhooks/stripe", "/stripe-webhook", "/__debug/stripe"],
+)
 
 stripe.api_key = billing_config.stripe_secret_key
 webhook_secret = billing_config.stripe_webhook_secret
@@ -108,6 +116,25 @@ LEGACY_PROMPT_PACK_PURCHASE_TYPES = {"prompt_pack_10"}
 PROMPT_PACK_CREDITS = 10
 
 app = FastAPI(title="Stripe Webhook")
+
+
+@app.get("/__debug/stripe")
+async def stripe_debug():
+    routes = sorted(
+        route.path
+        for route in app.routes
+        if route.path in {"/webhooks/stripe", "/stripe-webhook", "/__debug/stripe"}
+    )
+    return {
+        "app_env": billing_config.app_env,
+        "expected_livemode": expected_livemode,
+        "stripe_secret_key": key_label(billing_config.stripe_secret_key),
+        "stripe_publishable_key": key_label(billing_config.stripe_publishable_key),
+        "stripe_webhook_secret": key_label(billing_config.stripe_webhook_secret),
+        "mounted_routes": routes,
+        "canonical_webhook_path": "/webhooks/stripe",
+        "compat_webhook_path": "/stripe-webhook",
+    }
 
 
 def ts_to_date_str(ts: int | None) -> str | None:

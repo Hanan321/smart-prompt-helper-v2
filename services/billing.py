@@ -5,6 +5,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import stripe
 from supabase import Client
+from services.diagnostics import key_label
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
 PROMPT_PACK_CREDITS = 10
@@ -365,20 +366,24 @@ class BillingService:
         }
 
         logger.info(
-            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s success_url=%s metadata_keys=%s",
+            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s secret_key=%s success_url=%s cancel_url=%s metadata_keys=%s expected_webhook_path=%s",
             user_id,
             _safe_id(customer_id),
             PROMPT_PACK_CREDITS,
             self.app_env,
+            key_label(stripe.api_key),
             success_url_with_session,
+            cancel_url_with_context,
             sorted(payload["metadata"].keys()),
+            "/webhooks/stripe or /stripe-webhook on the FastAPI webhook host",
         )
         checkout_session = stripe.checkout.Session.create(**payload)
         logger.info(
-            "Created Stripe prompt pack checkout: user_id=%s env=%s session_id=%s",
+            "Created Stripe prompt pack checkout: user_id=%s env=%s session_id=%s livemode=%s",
             user_id,
             self.app_env,
             _safe_id(_stripe_value(checkout_session, "id")),
+            bool(_stripe_value(checkout_session, "livemode", False)),
         )
         return checkout_session
 
