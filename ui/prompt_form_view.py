@@ -29,7 +29,7 @@ def prompt_form_panel(
     st.divider()
 
     task_map = {
-        "Undergraduate": [
+        "Middle school": [
             "Explain a topic",
             "Summarize notes",
             "Make quiz questions",
@@ -39,7 +39,27 @@ def prompt_form_panel(
             "Create presentation outline",
             "Other / Something else",
         ],
-        "Graduate": [
+        "High school": [
+            "Explain a topic",
+            "Summarize notes",
+            "Make quiz questions",
+            "Improve writing",
+            "Write an essay",
+            "Generate study guide",
+            "Create presentation outline",
+            "Other / Something else",
+        ],
+        "University/College": [
+            "Explain a topic",
+            "Summarize notes",
+            "Make quiz questions",
+            "Improve writing",
+            "Write an essay",
+            "Generate study guide",
+            "Create presentation outline",
+            "Other / Something else",
+        ],
+        "Higher education level": [
             "Summarize a research paper",
             "Improve academic writing",
             "Generate research questions",
@@ -49,7 +69,7 @@ def prompt_form_panel(
             "Create presentation outline",
             "Other / Something else",
         ],
-        "Researcher / Professional": [
+        "Researchers": [
             "Summarize a research paper",
             "Improve academic writing",
             "Generate research questions",
@@ -63,9 +83,11 @@ def prompt_form_panel(
     }
 
     placeholder_map = {
-        "Undergraduate": "Example: biology summary, explain photosynthesis, improve my paragraph",
-        "Graduate": "Example: summarize this abstract, improve discussion section, research questions on addiction",
-        "Researcher / Professional": "Example: refine literature review, rewrite for journal tone, outline presentation",
+        "Middle school": "Example: biology summary, explain photosynthesis, improve my paragraph",
+        "High school": "Example: biology summary, explain photosynthesis, improve my paragraph",
+        "University/College": "Example: biology summary, explain photosynthesis, improve my paragraph",
+        "Higher education level": "Example: summarize this abstract, improve discussion section, research questions on addiction",
+        "Researchers": "Example: refine literature review, rewrite for journal tone, outline presentation",
     }
 
     col1, col2 = st.columns(2)
@@ -105,9 +127,9 @@ def prompt_form_panel(
     if clean_user_text and len(clean_user_text) < 8:
         st.info("Short input is okay — the app will expand it into a strong prompt.")
 
-    if audience == "Undergraduate":
+    if audience in {"Middle school", "High school", "University/College"}:
         tip_text = "Tip: Adding the course topic can improve results, but it's optional."
-    elif audience == "Graduate":
+    elif audience == "Higher education level":
         tip_text = "Tip: Include subject area or assignment goal for more precise output."
     else:
         tip_text = "Tip: Include discipline or research goal for best results."

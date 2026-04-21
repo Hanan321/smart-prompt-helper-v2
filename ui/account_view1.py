@@ -21,7 +21,7 @@ def account_summary_panel(
         )
 
         if current_plan == "free":
-            st.write(f"Free trial usage: **{total_used}/5 prompts**")
+            st.write(f"Free trial usage: **{total_used}/3 prompts**")
         else:
             if monthly_limit > 0:
                 st.write(f"Monthly usage: **{monthly_used}/{monthly_limit} prompts**")

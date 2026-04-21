@@ -22,7 +22,7 @@ class Settings:
 
     cookies_password: str  # ✅ NEW
 
-    free_total_prompt_limit: int = 5
+    free_total_prompt_limit: int = 3
     pro_monthly_prompt_limit: int = 200
 
 
@@ -68,7 +68,7 @@ def get_settings() -> Settings:
 
         cookies_password=_from_env("COOKIES_PASSWORD"),  # ✅ NEW
 
-        free_total_prompt_limit=_from_env_int("FREE_TOTAL_PROMPT_LIMIT", 5),
+        free_total_prompt_limit=_from_env_int("FREE_TOTAL_PROMPT_LIMIT", 3),
         pro_monthly_prompt_limit=_from_env_int("PRO_MONTHLY_PROMPT_LIMIT", 200),
     )
 

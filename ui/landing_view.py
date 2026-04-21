@@ -148,7 +148,7 @@ def landing_page() -> None:
             st.markdown("<div class='lp-step-label'>Step 1</div>", unsafe_allow_html=True)
             st.markdown("<div class='lp-step-title'>Choose your audience</div>", unsafe_allow_html=True)
             st.markdown(
-                "<div class='lp-step-text'>Select Undergraduate, Graduate, or Researcher / Professional to match the right tone and quality level.</div>",
+                "<div class='lp-step-text'>Select Middle school, High school, University/College, Higher education level, or Researchers to match the right tone and quality level.</div>",
                 unsafe_allow_html=True,
             )
 
@@ -185,9 +185,11 @@ def landing_page() -> None:
         st.markdown(
             """
             <div class='lp-chip-row'>
-                <span class='lp-chip'>Undergraduate</span>
-                <span class='lp-chip'>Graduate</span>
-                <span class='lp-chip'>Researcher / Professional</span>
+                <span class='lp-chip'>Middle school</span>
+                <span class='lp-chip'>High school</span>
+                <span class='lp-chip'>University/College</span>
+                <span class='lp-chip'>Higher education level</span>
+                <span class='lp-chip'>Researchers</span>
                 <span class='lp-chip'>Clear</span>
                 <span class='lp-chip'>Structured</span>
                 <span class='lp-chip'>Context-aware</span>
@@ -232,7 +234,7 @@ def landing_page() -> None:
                 st.subheader("Free Plan")
                 st.markdown("### $0")
                 st.caption("A simple way to try the platform")
-                st.write("• 5 prompts")
+                st.write("• 3 prompts")
                 st.write("• Full access to core features")
 
         with p2:

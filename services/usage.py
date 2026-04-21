@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from supabase import Client
 
-FREE_TOTAL_PROMPT_LIMIT = 5
+FREE_TOTAL_PROMPT_LIMIT = 3
 PRO_MONTHLY_PROMPT_LIMIT = 200
 
 

@@ -59,7 +59,7 @@ def subscription_panel(
         st.info("You are currently on the Free plan. Upgrade anytime for more monthly prompts.")
 
     plans = [
-        ("Free Trial", "$0", "5 prompts total to test the app", None),
+        ("Free Trial", "$0", "3 prompts total to test the app", None),
         (
             "Pro",
             "$20/month",
@@ -84,7 +84,7 @@ def subscription_panel(
                 )
 
                 if plan_name == "Free Trial":
-                    st.caption("Includes 5 total prompts to test the app.")
+                    st.caption("Includes 3 total prompts to test the app.")
                 else:
                     if current_plan == "pro":
                         if is_real_stripe_subscription:

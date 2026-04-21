@@ -24,15 +24,23 @@ class PromptGenerator:
         )
 
         audience_guides = {
-            "Undergraduate": (
+            "Middle school": (
+                "The generated prompt should ask for a response that is simple, supportive, age-appropriate, and easy to follow. "
+                "Prefer plain language, clear examples, and step-by-step explanation when useful."
+            ),
+            "High school": (
                 "The generated prompt should ask for a response that is clear, supportive, easy to follow, and educational. "
                 "Prefer plain language, step-by-step explanation when useful, and practical structure."
             ),
-            "Graduate": (
+            "University/College": (
+                "The generated prompt should ask for a response that is clear, well-structured, educational, and suitable for college-level academic work. "
+                "Encourage useful organization, accurate explanation, and appropriate academic tone."
+            ),
+            "Higher education level": (
                 "The generated prompt should ask for a response that is academically strong, well-structured, and appropriately detailed. "
                 "Encourage analytical depth, organization, and formal academic tone."
             ),
-            "Researcher / Professional": (
+            "Researchers": (
                 "The generated prompt should ask for a response that is rigorous, precise, formal, and suitable for advanced academic or professional research use. "
                 "Encourage synthesis, nuance, discipline-appropriate terminology, and strong structural clarity."
             ),
