@@ -8,7 +8,8 @@ from supabase import Client
 
 PRO_MONTHLY_PROMPT_LIMIT = 200
 PROMPT_PACK_CREDITS = 10
-PROMPT_PACK_PURCHASE_TYPE = "prompt_pack_10"
+PROMPT_PACK_PURCHASE_TYPE = "prompt_pack"
+LEGACY_PROMPT_PACK_PURCHASE_TYPES = {"prompt_pack_10"}
 ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
 BILLING_SELECT = "*"
 logger = logging.getLogger(__name__)
@@ -352,15 +353,25 @@ class BillingService:
                 "credits": str(PROMPT_PACK_CREDITS),
                 "environment": self.app_env,
             },
+            "payment_intent_data": {
+                "metadata": {
+                    "user_id": user_id,
+                    "purchase_type": PROMPT_PACK_PURCHASE_TYPE,
+                    "credits": str(PROMPT_PACK_CREDITS),
+                    "environment": self.app_env,
+                    "checkout_type": "prompt_pack",
+                },
+            },
         }
 
         logger.info(
-            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s success_url=%s",
+            "Creating Stripe prompt pack checkout: user_id=%s customer_id=%s credits=%s env=%s success_url=%s metadata_keys=%s",
             user_id,
             _safe_id(customer_id),
             PROMPT_PACK_CREDITS,
             self.app_env,
             success_url_with_session,
+            sorted(payload["metadata"].keys()),
         )
         checkout_session = stripe.checkout.Session.create(**payload)
         logger.info(
@@ -373,10 +384,12 @@ class BillingService:
 
     def _is_paid_prompt_pack_session(self, checkout_session, user_id: str) -> bool:
         metadata = _stripe_value(checkout_session, "metadata", {}) or {}
+        purchase_type = metadata.get("purchase_type")
         return (
             _stripe_value(checkout_session, "mode") == "payment"
             and _stripe_value(checkout_session, "payment_status") == "paid"
-            and metadata.get("purchase_type") == PROMPT_PACK_PURCHASE_TYPE
+            and purchase_type
+            in {PROMPT_PACK_PURCHASE_TYPE, *LEGACY_PROMPT_PACK_PURCHASE_TYPES}
             and metadata.get("user_id") == user_id
             and metadata.get("environment") == self.app_env
         )

@@ -103,7 +103,8 @@ supabase = create_client(
 
 BILLING_SELECT = "*"
 
-PROMPT_PACK_PURCHASE_TYPE = "prompt_pack_10"
+PROMPT_PACK_PURCHASE_TYPE = "prompt_pack"
+LEGACY_PROMPT_PACK_PURCHASE_TYPES = {"prompt_pack_10"}
 PROMPT_PACK_CREDITS = 10
 
 app = FastAPI(title="Stripe Webhook")
@@ -384,11 +385,12 @@ def grant_prompt_pack_credits(
 
     granted = bool(getattr(response, "data", False))
     logger.info(
-        "Prompt pack credit grant %s: user_id=%s env=%s credits=%s",
+        "Prompt pack credit grant %s: user_id=%s env=%s credits=%s checkout_session_id=%s",
         "applied" if granted else "already processed",
         user_id,
         billing_config.app_env,
         PROMPT_PACK_CREDITS,
+        checkout_session_id,
     )
     return granted
 
@@ -453,15 +455,32 @@ async def stripe_webhook(
         purchase_type = metadata.get("purchase_type")
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
+        checkout_session_id = data.get("id")
+
+        logger.info(
+            "Checkout session completed: event_id=%s env=%s session_id=%s mode=%s purchase_type=%s metadata_present=%s payment_intent_present=%s",
+            event_id,
+            billing_config.app_env,
+            checkout_session_id,
+            data.get("mode"),
+            purchase_type or "missing",
+            bool(metadata),
+            bool(data.get("payment_intent")),
+        )
 
         if not user_id:
             logger.warning("Checkout session completed without a resolvable user_id.")
             return {"ok": True, "ignored": "missing_user_id"}
 
-        if purchase_type == PROMPT_PACK_PURCHASE_TYPE:
+        if purchase_type in {PROMPT_PACK_PURCHASE_TYPE, *LEGACY_PROMPT_PACK_PURCHASE_TYPES}:
+            logger.info(
+                "Processing prompt pack checkout.session.completed using checkout session ID, not payment intent: session_id=%s payment_intent_id=%s",
+                checkout_session_id,
+                data.get("payment_intent"),
+            )
             grant_prompt_pack_credits(
                 user_id=user_id,
-                checkout_session_id=data.get("id"),
+                checkout_session_id=checkout_session_id,
                 customer_id=customer_id,
             )
             return {"ok": True}

@@ -384,11 +384,12 @@ def app_panel(user: dict) -> None:
                 f"...{checkout_session_id[-6:]}" if checkout_session_id else "missing"
             )
             logger.info(
-                "Prompt pack checkout return detected: user_id=%s env=%s status=%s session_id=%s",
+                "Prompt pack checkout return detected: user_id=%s env=%s status=%s checkout_session_id=%s uses_checkout_session_id=%s",
                 user["id"],
                 settings.app_env,
                 prompt_pack_checkout,
                 safe_checkout_session_id,
+                bool(checkout_session_id and str(checkout_session_id).startswith("cs_")),
             )
         had_prompt_pack_credits = (
             int(profile.get("credit_balance", 0) or 0) > 0
