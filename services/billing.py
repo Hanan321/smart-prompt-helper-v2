@@ -414,28 +414,30 @@ class BillingService:
         payment_status = _stripe_value(checkout_session, "payment_status")
         price_match = bool(session_id and self._session_uses_price(session_id, price_id))
         customer_match = (
-            not stripe_customer_id
-            or not session_customer_id
-            or session_customer_id == stripe_customer_id
+            bool(stripe_customer_id)
+            and bool(session_customer_id)
+            and session_customer_id == stripe_customer_id
         )
+        user_match = session_user_id == user_id
+        owner_match = user_match or customer_match
 
         valid = (
             session_mode == "payment"
             and payment_status == "paid"
-            and session_user_id == user_id
-            and customer_match
+            and owner_match
             and price_match
         )
         logger.info(
-            "Returned prompt pack session validation: user_id=%s env=%s session_id=%s mode=%s paid=%s user_match=%s customer_match=%s price_match=%s valid=%s",
+            "Returned prompt pack session validation: user_id=%s env=%s session_id=%s mode=%s paid=%s user_match=%s customer_match=%s price_match=%s owner_match=%s valid=%s",
             user_id,
             self.app_env,
             _safe_id(session_id),
             session_mode,
             payment_status == "paid",
-            session_user_id == user_id,
+            user_match,
             customer_match,
             price_match,
+            owner_match,
             valid,
         )
         return valid
