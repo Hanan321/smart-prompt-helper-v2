@@ -142,10 +142,12 @@ else:
     display_name = profile.get("username") or user.get("email", "User")
     st.markdown(f"## Welcome, {display_name}")
     
-    account_summary_panel(display_name, user, (profile.get("plan") or "free").lower(), 
-                          get_total_prompt_count(profile), get_monthly_prompt_count(profile), 
-                          get_monthly_prompt_limit(profile), supabase_auth, cookies, clear_auth_cookies)
-    prompt_form_panel(user, supabase_admin, prompt_generator, can_generate_prompt, increment_prompt_count)
+    current_plan = (profile.get("plan") or "free").lower()
+
+    account_summary_panel(display_name, user, current_plan,
+                          get_total_prompt_count(supabase_admin, user["id"]), get_monthly_prompt_count(supabase_admin, user["id"]),
+                          get_monthly_prompt_limit(supabase_admin, user["id"]), supabase_auth, cookies, clear_auth_cookies)
+    prompt_form_panel(user, supabase_admin, prompt_generator, can_generate_prompt, increment_prompt_count, current_plan)
     prompt_result_panel(st.session_state.get("generated_prompt", ""))
     st.divider()
     subscription_panel(profile, user, billing_service, settings)

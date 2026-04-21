@@ -392,6 +392,7 @@ def app_panel(user: dict) -> None:
         prompt_generator,
         can_generate_prompt,
         increment_prompt_count,
+        current_plan,
     )
 
     prompt_result_panel(st.session_state.get("generated_prompt", ""))

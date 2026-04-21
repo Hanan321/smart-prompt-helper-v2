@@ -35,10 +35,11 @@ Smart Prompt Helper is designed for:
 ## Pricing
 
 ### Free Plan
-- 5 prompts total to test the app
+- 3 prompts total to test the app
 
 ### Pro Plan — $20/month
 - Up to 200 prompts per month
+- Additional academic and research workflow choices
 - Designed for academic and research workflows
 - Better suited for regular and professional use
 

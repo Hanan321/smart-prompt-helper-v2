@@ -68,6 +68,30 @@ class PromptGenerator:
             "Create presentation outline": (
                 "Create a prompt that asks the AI to create a clear presentation outline with slide-by-slide structure and key talking points."
             ),
+            "Create flashcards": (
+                "Create a prompt that asks the AI to turn the material into useful flashcards with questions, answers, and key terms."
+            ),
+            "Make a homework plan": (
+                "Create a prompt that asks the AI to make a practical homework plan with prioritized tasks, timing, and study steps."
+            ),
+            "Turn notes into practice problems": (
+                "Create a prompt that asks the AI to convert the material into practice problems with clear answers and explanations."
+            ),
+            "Draft a thesis statement": (
+                "Create a prompt that asks the AI to draft and refine a focused thesis statement based on the topic and assignment goal."
+            ),
+            "Build an essay outline": (
+                "Create a prompt that asks the AI to build a structured essay outline with a thesis, main points, evidence placeholders, and conclusion."
+            ),
+            "Create an annotated bibliography plan": (
+                "Create a prompt that asks the AI to plan an annotated bibliography structure, source evaluation criteria, and annotation format."
+            ),
+            "Analyze an argument": (
+                "Create a prompt that asks the AI to analyze an argument for claim, evidence, reasoning, assumptions, and possible weaknesses."
+            ),
+            "Prepare for an exam": (
+                "Create a prompt that asks the AI to make an exam preparation plan with study priorities, practice questions, and review schedule."
+            ),
             "Summarize a research paper": (
                 "Create a prompt that asks the AI to summarize the paper in a structured academic format including objective, methodology, findings, limitations, and significance."
             ),
@@ -85,6 +109,27 @@ class PromptGenerator:
             ),
             "Rewrite for clarity, formality, and precision": (
                 "Create a prompt that asks the AI to rewrite the content with improved clarity, precision, and formal tone while preserving meaning."
+            ),
+            "Analyze research methods": (
+                "Create a prompt that asks the AI to evaluate research methods, including design, sample, measures, analysis approach, strengths, and limitations."
+            ),
+            "Create a data analysis plan": (
+                "Create a prompt that asks the AI to develop a data analysis plan with variables, methods, assumptions, checks, and reporting structure."
+            ),
+            "Draft a discussion section": (
+                "Create a prompt that asks the AI to draft or structure a discussion section that interprets findings, limitations, implications, and future work."
+            ),
+            "Prepare a conference presentation": (
+                "Create a prompt that asks the AI to turn research content into a conference presentation structure with key claims and speaking notes."
+            ),
+            "Draft a journal abstract": (
+                "Create a prompt that asks the AI to draft a concise journal-style abstract with background, objective, methods, results, and conclusion placeholders."
+            ),
+            "Prepare a conference proposal": (
+                "Create a prompt that asks the AI to create a conference proposal with title, abstract, contribution, audience fit, and keywords."
+            ),
+            "Create a grant proposal outline": (
+                "Create a prompt that asks the AI to outline a grant proposal with problem statement, aims, significance, approach, timeline, and expected outcomes."
             ),
         }
 

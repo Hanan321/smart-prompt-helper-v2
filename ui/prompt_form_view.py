@@ -7,6 +7,7 @@ def prompt_form_panel(
     prompt_generator,
     can_generate_prompt,
     increment_prompt_count,
+    current_plan: str = "free",
 ) -> None:
     st.markdown("<div class='section-title'>✨ Generate Your Prompt</div>", unsafe_allow_html=True)
 
@@ -28,7 +29,7 @@ def prompt_form_panel(
 
     st.divider()
 
-    task_map = {
+    base_task_map = {
         "Middle school": [
             "Explain a topic",
             "Summarize notes",
@@ -82,6 +83,48 @@ def prompt_form_panel(
         ],
     }
 
+    pro_task_map = {
+        "Middle school": [
+            "Create flashcards",
+            "Make a homework plan",
+            "Turn notes into practice problems",
+        ],
+        "High school": [
+            "Create flashcards",
+            "Make a homework plan",
+            "Draft a thesis statement",
+            "Build an essay outline",
+            "Turn notes into practice problems",
+        ],
+        "University/College": [
+            "Draft a thesis statement",
+            "Build an essay outline",
+            "Create an annotated bibliography plan",
+            "Analyze an argument",
+            "Prepare for an exam",
+        ],
+        "Higher education level": [
+            "Create an annotated bibliography plan",
+            "Analyze research methods",
+            "Create a data analysis plan",
+            "Draft a discussion section",
+            "Prepare a conference presentation",
+        ],
+        "Researchers": [
+            "Analyze research methods",
+            "Create a data analysis plan",
+            "Draft a journal abstract",
+            "Prepare a conference proposal",
+            "Create a grant proposal outline",
+        ],
+    }
+
+    is_pro = (current_plan or "free").lower() == "pro"
+    task_map = {}
+    for audience, tasks in base_task_map.items():
+        pro_tasks = pro_task_map.get(audience, []) if is_pro else []
+        task_map[audience] = tasks[:-1] + pro_tasks + [tasks[-1]]
+
     placeholder_map = {
         "Middle school": "Example: biology summary, explain photosynthesis, improve my paragraph",
         "High school": "Example: biology summary, explain photosynthesis, improve my paragraph",
@@ -97,6 +140,9 @@ def prompt_form_panel(
 
     with col2:
         task_name = st.selectbox("What do you need help with?", task_map[audience])
+
+    if not is_pro:
+        st.caption("Pro unlocks additional workflow choices in this task list.")
 
     if task_name == "Other / Something else":
         custom_task = st.text_input(

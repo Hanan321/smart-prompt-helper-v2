@@ -1,5 +1,7 @@
 import streamlit as st
 
+from services.usage import FREE_TOTAL_PROMPT_LIMIT
+
 
 def account_summary_panel(
     display_name: str,
@@ -45,7 +47,7 @@ def account_summary_panel(
         )
 
         if current_plan == "free":
-            st.write(f"Free trial usage: **{total_used}/3 prompts**")
+            st.write(f"Free trial usage: **{total_used}/{FREE_TOTAL_PROMPT_LIMIT} prompts**")
         else:
             if monthly_limit > 0:
                 st.write(f"Monthly usage: **{monthly_used}/{monthly_limit} prompts**")
