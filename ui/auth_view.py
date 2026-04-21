@@ -28,6 +28,10 @@ def auth_panel(
 
     if "show_resend_confirmation_form" not in st.session_state:
         st.session_state.show_resend_confirmation_form = False
+    if "auth_notice" not in st.session_state:
+        st.session_state.auth_notice = None
+    if "auth_notice_detail" not in st.session_state:
+        st.session_state.auth_notice_detail = None
 
     auth_message = None
 
@@ -57,6 +61,12 @@ def auth_panel(
         else:
             st.info(message)
 
+    if st.session_state.auth_notice:
+        st.success(st.session_state.auth_notice)
+
+    if st.session_state.auth_notice_detail:
+        st.info(st.session_state.auth_notice_detail)
+
     login_tab, signup_tab, magic_link_tab = st.tabs(
         ["Log In", "Create Account", "Email Me a Sign-In Link"]
     )
@@ -74,6 +84,8 @@ def auth_panel(
                     st.error("Please enter both email and password.")
                 else:
                     try:
+                        st.session_state.auth_notice = None
+                        st.session_state.auth_notice_detail = None
                         auth_response = sign_in(
                             supabase_auth,
                             email=clean_email,
@@ -132,6 +144,8 @@ def auth_panel(
                         st.error("Please enter your email address.")
                     else:
                         try:
+                            st.session_state.auth_notice = None
+                            st.session_state.auth_notice_detail = None
                             resend_signup_confirmation(
                                 supabase_auth,
                                 email=clean_email,
@@ -196,6 +210,8 @@ def auth_panel(
                     st.error("Passwords do not match.")
                 else:
                     try:
+                        st.session_state.auth_notice = None
+                        st.session_state.auth_notice_detail = None
                         auth_response = sign_up(
                             supabase_auth,
                             email=clean_email,
@@ -214,12 +230,13 @@ def auth_panel(
                                 clean_username,
                             )
 
-                        st.success(
+                        st.session_state.auth_notice = (
                             "Your account has been created successfully. Please check your email to confirm your address before logging in."
                         )
-                        st.info(
+                        st.session_state.auth_notice_detail = (
                             "If you do not receive the confirmation email right away, use the resend confirmation option in the Log In tab."
                         )
+                        st.rerun()
 
                     except Exception as exc:
                         error_msg = str(exc).lower()
@@ -228,9 +245,11 @@ def auth_panel(
                             "over_email_send_rate_limit" in error_msg
                             or "email rate limit" in error_msg
                         ):
-                            st.warning(
+                            st.session_state.auth_notice = None
+                            st.session_state.auth_notice_detail = (
                                 "Your account may have been created, but the confirmation email could not be sent yet because the email sending limit was reached. Please wait a little, then use the resend confirmation option in the Log In tab."
                             )
+                            st.rerun()
                         elif "user already registered" in error_msg:
                             st.error(
                                 "This email is already registered. Please log in or confirm your email."
@@ -257,6 +276,8 @@ def auth_panel(
                     st.error("Please enter your email address.")
                 else:
                     try:
+                        st.session_state.auth_notice = None
+                        st.session_state.auth_notice_detail = None
                         send_sign_in_link(
                             supabase_auth,
                             email=clean_email,

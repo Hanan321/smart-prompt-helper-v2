@@ -57,6 +57,8 @@ def init_session_state() -> None:
         "password_reset_done": False,
         "show_welcome": False,
         "show_resend_confirmation_form": False,
+        "auth_notice": None,
+        "auth_notice_detail": None,
         "last_auth_hash_consumed": "",
     }
 
