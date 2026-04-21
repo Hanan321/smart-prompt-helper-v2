@@ -381,6 +381,65 @@ class BillingService:
             and metadata.get("environment") == self.app_env
         )
 
+    def _session_uses_price(self, checkout_session_id: str, price_id: str | None) -> bool:
+        if not price_id:
+            return False
+
+        line_items = stripe.checkout.Session.list_line_items(
+            checkout_session_id,
+            limit=10,
+        )
+        for line_item in getattr(line_items, "data", []) or []:
+            price = _stripe_value(line_item, "price", {}) or {}
+            if _stripe_value(price, "id") == price_id:
+                return True
+
+        return False
+
+    def _is_returned_prompt_pack_session(
+        self,
+        checkout_session,
+        user_id: str,
+        stripe_customer_id: str | None,
+        price_id: str | None,
+    ) -> bool:
+        session_id = _stripe_value(checkout_session, "id")
+        metadata = _stripe_value(checkout_session, "metadata", {}) or {}
+        session_customer_id = _stripe_value(checkout_session, "customer")
+        session_user_id = metadata.get("user_id") or _stripe_value(
+            checkout_session,
+            "client_reference_id",
+        )
+        session_mode = _stripe_value(checkout_session, "mode")
+        payment_status = _stripe_value(checkout_session, "payment_status")
+        price_match = bool(session_id and self._session_uses_price(session_id, price_id))
+        customer_match = (
+            not stripe_customer_id
+            or not session_customer_id
+            or session_customer_id == stripe_customer_id
+        )
+
+        valid = (
+            session_mode == "payment"
+            and payment_status == "paid"
+            and session_user_id == user_id
+            and customer_match
+            and price_match
+        )
+        logger.info(
+            "Returned prompt pack session validation: user_id=%s env=%s session_id=%s mode=%s paid=%s user_match=%s customer_match=%s price_match=%s valid=%s",
+            user_id,
+            self.app_env,
+            _safe_id(session_id),
+            session_mode,
+            payment_status == "paid",
+            session_user_id == user_id,
+            customer_match,
+            price_match,
+            valid,
+        )
+        return valid
+
     def grant_prompt_pack_credits(
         self,
         admin_client: Client,
@@ -414,6 +473,8 @@ class BillingService:
         admin_client: Client,
         user_id: str,
         checkout_session_id: str | None,
+        stripe_customer_id: str | None = None,
+        price_id: str | None = None,
     ) -> bool:
         if self.app_env != "test" or not checkout_session_id:
             return False
@@ -425,7 +486,19 @@ class BillingService:
             _safe_id(checkout_session_id),
         )
         checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
-        if not self._is_paid_prompt_pack_session(checkout_session, user_id):
+        is_prompt_pack_session = self._is_paid_prompt_pack_session(
+            checkout_session,
+            user_id,
+        )
+        if not is_prompt_pack_session:
+            is_prompt_pack_session = self._is_returned_prompt_pack_session(
+                checkout_session,
+                user_id,
+                stripe_customer_id,
+                price_id,
+            )
+
+        if not is_prompt_pack_session:
             logger.info(
                 "Checkout session was not a paid prompt pack for this user: user_id=%s env=%s session_id=%s",
                 user_id,
@@ -447,6 +520,7 @@ class BillingService:
         admin_client: Client,
         user_id: str,
         stripe_customer_id: str | None,
+        price_id: str | None = None,
     ) -> int:
         if self.app_env != "test" or not stripe_customer_id:
             return 0
@@ -458,7 +532,18 @@ class BillingService:
         grants = 0
         paid_pack_sessions = 0
         for checkout_session in getattr(sessions, "data", []) or []:
-            if not self._is_paid_prompt_pack_session(checkout_session, user_id):
+            is_prompt_pack_session = self._is_paid_prompt_pack_session(
+                checkout_session,
+                user_id,
+            )
+            if not is_prompt_pack_session:
+                is_prompt_pack_session = self._is_returned_prompt_pack_session(
+                    checkout_session,
+                    user_id,
+                    stripe_customer_id,
+                    price_id,
+                )
+            if not is_prompt_pack_session:
                 continue
             paid_pack_sessions += 1
             session_id = _stripe_value(checkout_session, "id")

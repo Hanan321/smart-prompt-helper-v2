@@ -396,17 +396,29 @@ def app_panel(user: dict) -> None:
         )
         try:
             synced_from_redirect = False
-            if prompt_pack_checkout == "success" and checkout_session_id:
+            prompt_pack_price_id = getattr(
+                getattr(settings, "billing_config", None),
+                "stripe_price_pack_10",
+                getattr(settings, "stripe_price_pack_10", ""),
+            )
+            if (
+                prompt_pack_checkout == "success" and checkout_session_id
+            ) or (
+                checkout_session_id and str(checkout_session_id).startswith("cs_")
+            ):
                 synced_from_redirect = billing_service.sync_prompt_pack_checkout_session(
                     supabase_admin,
                     user["id"],
                     checkout_session_id,
+                    profile.get("stripe_customer_id"),
+                    prompt_pack_price_id,
                 )
 
             synced_from_history = billing_service.sync_completed_prompt_pack_purchases(
                 supabase_admin,
                 user["id"],
                 profile.get("stripe_customer_id"),
+                prompt_pack_price_id,
             )
 
             profile = get_user_profile(supabase_admin, user["id"])
